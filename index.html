@@ -42,21 +42,34 @@ body { padding-bottom: 80px; }
 button { font-family: inherit; cursor: pointer; border: none; outline: none; background: none; }
 input, select, textarea { font-family: inherit; font-size: 16px; }
 
-/* ---------- LOADING OVERLAY ---------- */
+/* ---------- LOADING MODAL OVERLAY ---------- */
 #pageLoader {
-  position: fixed; inset: 0; background: rgba(244,246,248,0.85);
-  backdrop-filter: blur(2px); z-index: 900;
-  display: none; align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+  position: fixed; inset: 0; background: rgba(10, 31, 68, 0.55);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+  z-index: 9999;
+  display: none; align-items: center; justify-content: center;
+  animation: fadeIn 0.15s ease;
 }
 #pageLoader.active { display: flex; }
+#pageLoader .loader-box {
+  background: #ffffff; border-radius: 16px;
+  padding: 28px 36px; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+  min-width: 200px;
+  animation: popIn 0.2s cubic-bezier(.2,.8,.2,1);
+}
 #pageLoader .spinner-lg {
-  width: 54px; height: 54px; border: 5px solid #dbe4f5;
+  width: 52px; height: 52px; border: 5px solid #dbe4f5;
   border-top-color: var(--primary); border-radius: 50%;
   animation: spin 0.9s linear infinite;
+  margin: 0 auto 14px;
 }
-#pageLoader .loader-text { color: var(--primary); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.4px; }
+#pageLoader .loader-text { color: var(--primary); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.3px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.btn.is-loading { opacity: 0.7; pointer-events: none; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+.btn.is-loading { opacity: 0.7; pointer-events: none; position: relative; }
 .btn.is-loading::after {
   content: ""; display: inline-block; width: 14px; height: 14px;
   margin-left: 8px; border: 2px solid currentColor; border-top-color: transparent;
@@ -65,7 +78,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .hidden { display: none !important; }
 
 /* ---------- LOGIN ---------- */
-#loginScreen { position: fixed; inset: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, var(--navy) 0%, #05122a 100%); padding: 20px; z-index: 999; }
+#loginScreen { position: fixed; inset: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, var(--navy) 0%, #05122a 100%); padding: 20px; z-index: 10000; }
 .login-card { background: var(--white); border-radius: 16px; padding: 32px 24px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
 .login-card h1 { color: var(--navy); margin: 0 0 6px; font-size: 24px; text-align: center; }
 .login-card p { color: var(--gray-3); text-align: center; margin: 0 0 24px; font-size: 13px; }
@@ -111,7 +124,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .grid-tanks { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
 
 /* ---------- ASSET CARDS ---------- */
-.asset-card { background: var(--white); border-radius: 12px; padding: 12px 6px; text-align: center; border: 2px solid var(--gray-2); transition: all .15s; }
+.asset-card { background: var(--white); border-radius: 12px; padding: 12px 6px; text-align: center; border: 2px solid var(--gray-2); transition: all .15s; cursor: pointer; }
 .asset-card.vacant { border-color: #86efac; }
 .asset-card.occupied { border-color: #fca5a5; background: #fef2f2; }
 .asset-card:active { transform: scale(.96); }
@@ -128,7 +141,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .stat-box.red .value { color: var(--red); }
 .stat-box.amber .value { color: var(--amber); }
 
-/* ---------- ACCOUNT BOXES (reports) ---------- */
+/* ---------- ACCOUNT BOXES ---------- */
 .account-box { background: linear-gradient(140deg, var(--navy) 0%, var(--navy-light) 100%); color: white; border-radius: 14px; padding: 18px; text-align: left; cursor: pointer; }
 .account-box .label { font-size: 12px; opacity: .85; text-transform: uppercase; letter-spacing: .5px; }
 .account-box .value { font-size: 26px; font-weight: 800; margin-top: 6px; }
@@ -154,7 +167,6 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 /* ---------- MODAL ---------- */
 .modal-overlay { position: fixed; inset: 0; background: rgba(5,18,42,.6); display: flex; align-items: flex-end; justify-content: center; z-index: 200; animation: fadeIn .2s; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .modal { background: var(--white); border-radius: 20px 20px 0 0; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; animation: slideUp .25s cubic-bezier(.2,.8,.2,1); }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 .modal-header { padding: 18px 20px 12px; border-bottom: 1px solid var(--gray-2); position: sticky; top: 0; background: var(--white); z-index: 10; display: flex; align-items: center; justify-content: space-between; }
@@ -215,10 +227,12 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 </head>
 <body>
 
-<!-- ================= LOADING OVERLAY ================= -->
+<!-- ================= LOADING MODAL OVERLAY ================= -->
 <div id="pageLoader">
-  <div class="spinner-lg"></div>
-  <div class="loader-text" id="pageLoaderText">Loading...</div>
+  <div class="loader-box">
+    <div class="spinner-lg"></div>
+    <div class="loader-text" id="pageLoaderText">Loading...</div>
+  </div>
 </div>
 
 <!-- ================= LOGIN ================= -->
@@ -258,7 +272,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 <script>
 // ============ CONFIG ============
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyRU-izhftUIblHcqncJa5ooQ3M7I0Ts7UXwt85PKJTQbTBo88QiKrdVJGKrEHLnQ/exec';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyqtcVWtiDIE9_V2WFStmyxqeqkvIkSyqolmnC94Cda9gix_G42QETtCRSZzuD_5Wo/exec';
 
 // ============ STATE ============
 const state = {
@@ -324,7 +338,6 @@ async function doLogin() {
   const password = document.getElementById('loginPass').value;
   if (!username || !password) return toast('Enter username and password', 'error');
   const btn = document.getElementById('loginBtn');
-  btn.disabled = true; btn.textContent = 'Signing in...';
   setBtnLoading(btn, true);
   try {
     const res = await apiGet({ action: 'login', username, password });
@@ -335,7 +348,6 @@ async function doLogin() {
   } catch (e) {
     toast('Connection error', 'error');
   } finally {
-    btn.disabled = false; btn.textContent = 'Sign In';
     setBtnLoading(btn, false);
   }
 }
@@ -401,6 +413,14 @@ function buildNav() {
 
 // ============ NAVIGATE ============
 function navigate(page) {
+  // If navigating AWAY from loadTank/loadBoiler to a different page, reset staging
+  if (state.page !== page && (state.page === 'loadTank' || state.page === 'loadBoiler') && page !== state.page) {
+    // Only reset if leaving load workspace entirely
+    if (page !== 'loadTank' && page !== 'loadBoiler') {
+      state.selectedCustomer = null;
+      state.selectedAssets = [];
+    }
+  }
   state.page = page;
   buildNav();
   loadPage();
@@ -421,7 +441,12 @@ const PAGE_TITLES = {
 function startAutoRefresh() {
   stopAutoRefresh();
   state.refreshTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') loadPage(true);
+    if (document.visibilityState === 'visible') {
+      // Skip auto-refresh on load workspace if user is mid-flow (customer selected or tanks staged)
+      const skipLoad = (state.page === 'loadTank' || state.page === 'loadBoiler') &&
+                       (state.selectedCustomer || state.selectedAssets.length > 0);
+      if (!skipLoad) loadPage(true);
+    }
   }, 5000);
 }
 function stopAutoRefresh() {
@@ -441,9 +466,8 @@ async function loadPage(silent) {
   state.loading = true;
   const el = document.getElementById('pageContent');
   if (!silent) {
-    // show page-level loading state inside the content area too
     el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
-    showLoader('Loading...');
+    showLoader('Loading ' + (PAGE_TITLES[state.page] || '...'));
   }
   try {
     if (state.page === 'dashboard') await renderDashboard(el);
@@ -596,7 +620,6 @@ async function viewSession(id) {
 // ============ LOAD (tank or boiler) ============
 async function renderLoad(el, type) {
   document.getElementById('headerSub').textContent = (type === 'boiler' ? 'Boiler' : 'Tank') + ' loading';
-  // Load customers + expense types + assets
   const [custRes, expRes, dashRes] = await Promise.all([
     apiGet({ action: 'listCustomers' }),
     apiGet({ action: 'expenseTypes' }),
@@ -606,22 +629,34 @@ async function renderLoad(el, type) {
   const allExpenses = (expRes.expenses || []).filter(e => String(e.assetType).toLowerCase() === type);
   const assets = (type === 'boiler' ? dashRes.boilers.items : dashRes.tanks.items).filter(a => String(a.status).toLowerCase() === 'vacant');
 
+  // Preserve existing selection if re-rendering the same type
+  const preservedCustomer = state.selectedCustomer;
+  const preservedAssets = state.selectedAssets || [];
+  const preservedExpenses = state.selectedExpenses && state.selectedExpenses.length > 0
+    ? state.selectedExpenses
+    : allExpenses.map(e => ({ expenseId: e.id, expenseName: e.name, amountPerAsset: Number(e.amount), description: '' }));
+
   el.innerHTML = `
-    <div class="steps"><div class="step active" id="step1"></div><div class="step" id="step2"></div><div class="step" id="step3"></div></div>
-    <div class="card">
+    <div class="steps"><div class="step ${preservedCustomer ? 'done' : 'active'}" id="step1"></div><div class="step ${preservedCustomer ? 'active' : ''}" id="step2"></div><div class="step" id="step3"></div></div>
+    <div class="card" id="step1Card">
       <div class="card-title">Step 1 · Select Customer</div>
       <div class="search-bar">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a94a6" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input id="custSearch" placeholder="Search customer by name or phone" oninput="filterCustomers(this.value)">
       </div>
+      ${preservedCustomer ? `<div class="list-item" style="margin-top:12px;border-color:#0641ab;background:#eff6ff">
+        <div class="avatar">${preservedCustomer.name[0].toUpperCase()}</div>
+        <div class="info"><div class="name">${preservedCustomer.name}</div><div class="sub">Selected</div></div>
+        <span class="badge blue">Selected</span>
+      </div>` : ''}
       <div id="custList" style="margin-top:12px"></div>
       <button class="btn btn-outline" style="margin-top:10px" onclick="showAddCustomer()">+ Add New Customer</button>
     </div>
-    <div class="card hidden" id="step2Card">
+    <div class="card ${preservedCustomer ? '' : 'hidden'}" id="step2Card">
       <div class="card-title">Step 2 · Select ${type === 'boiler' ? 'Boilers' : 'Tanks'}</div>
       <div id="assetList" class="grid grid-tanks"></div>
     </div>
-    <div class="card hidden" id="step3Card">
+    <div class="card ${preservedAssets.length > 0 ? '' : 'hidden'}" id="step3Card">
       <div class="card-title">Step 3 · Expenses</div>
       <div id="expenseList"></div>
       <button class="btn btn-outline" style="margin-top:10px" onclick="showAddExpense()">+ Add Additional Expense</button>
@@ -629,23 +664,23 @@ async function renderLoad(el, type) {
       <button class="btn" style="margin-top:12px" onclick="submitLoad('${type}')">Create Invoice</button>
     </div>
   `;
-  
-  state.selectedCustomer = null;
-  state.selectedAssets = [];
-  state.selectedExpenses = allExpenses.map(e => ({
-    expenseId: e.id, expenseName: e.name, amountPerAsset: Number(e.amount), description: ''
-  }));
+
+  state.selectedCustomer = preservedCustomer;
+  state.selectedAssets = preservedAssets;
+  state.selectedExpenses = preservedExpenses;
   state.availableAssets = assets;
   state.allCustomers = customers;
   state.assetType = type;
-  
+
   renderCustomers(customers);
   renderAssets(assets);
   renderExpenses();
+  updateLoadTotal();
 }
 
 function renderCustomers(customers) {
   const list = document.getElementById('custList');
+  if (!list) return;
   if (customers.length === 0) { list.innerHTML = '<div class="empty" style="padding:20px">No customers found</div>'; return; }
   list.innerHTML = customers.map(c => `
     <div class="list-item" onclick="selectCustomer('${c.id}')">
@@ -670,39 +705,61 @@ function selectCustomer(id) {
   const c = state.allCustomers.find(x => String(x.id) === String(id));
   state.selectedCustomer = c;
   toast('Selected: ' + c.name, 'success');
-  document.getElementById('step1').classList.add('done');
-  document.getElementById('step2').classList.add('active');
-  document.getElementById('step2Card').classList.remove('hidden');
-  document.getElementById('step2Card').scrollIntoView({ behavior: 'smooth' });
+  // Re-render the current load view to reflect the new step state
+  const el = document.getElementById('pageContent');
+  renderLoad(el, state.assetType);
+  // Scroll to step 2
+  setTimeout(() => {
+    const s2 = document.getElementById('step2Card');
+    if (s2) s2.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
 }
 
 function renderAssets(assets) {
   const list = document.getElementById('assetList');
-  list.innerHTML = assets.map(a => `
-    <div class="asset-card vacant" data-id="${a.id}" onclick="toggleAsset('${a.id}')">
-      <div class="id">${a.id}</div>
-      <div class="status">vacant</div>
-    </div>
-  `).join('');
+  if (!list) return;
+  list.innerHTML = assets.map(a => {
+    const selected = state.selectedAssets.includes(a.id);
+    return `
+      <div class="asset-card vacant" data-id="${a.id}" onclick="toggleAsset('${a.id}')"
+           style="${selected ? 'background:#0641ab;color:white;border-color:#0641ab;' : ''}">
+        <div class="id" style="${selected ? 'color:white;' : ''}">${a.id}</div>
+        <div class="status" style="${selected ? 'color:white;' : ''}">${selected ? 'selected' : 'vacant'}</div>
+      </div>
+    `;
+  }).join('');
 }
 
 function toggleAsset(id) {
   const idx = state.selectedAssets.indexOf(id);
   if (idx >= 0) state.selectedAssets.splice(idx, 1);
   else state.selectedAssets.push(id);
+  // Update card visuals in place
   document.querySelectorAll('#assetList .asset-card').forEach(el => {
     if (state.selectedAssets.includes(el.dataset.id)) {
       el.style.background = '#0641ab'; el.style.color = 'white'; el.style.borderColor = '#0641ab';
-      el.querySelector('.id').style.color = 'white'; el.querySelector('.status').style.color = 'white';
+      el.querySelector('.id').style.color = 'white';
+      el.querySelector('.status').style.color = 'white';
+      el.querySelector('.status').textContent = 'selected';
     } else {
       el.style.background = ''; el.style.color = ''; el.style.borderColor = '#86efac';
-      el.querySelector('.id').style.color = ''; el.querySelector('.status').style.color = '';
+      el.querySelector('.id').style.color = '';
+      el.querySelector('.status').style.color = '';
+      el.querySelector('.status').textContent = 'vacant';
     }
   });
+  // Update step indicators
+  const step2 = document.getElementById('step2');
+  const step3 = document.getElementById('step3');
+  const step3Card = document.getElementById('step3Card');
   if (state.selectedAssets.length > 0) {
-    document.getElementById('step2').classList.add('done');
-    document.getElementById('step3').classList.add('active');
-    document.getElementById('step3Card').classList.remove('hidden');
+    if (step2) step2.classList.add('done');
+    if (step3) step3.classList.add('active');
+    if (step3Card) step3Card.classList.remove('hidden');
+  } else {
+    if (step2) step2.classList.remove('done');
+    if (step3) step3.classList.remove('active');
+    if (step3Card) step3Card.classList.add('hidden');
   }
   renderExpenses();
 }
@@ -762,46 +819,47 @@ async function submitLoad(type) {
   if (!state.selectedCustomer) return toast('Select a customer', 'error');
   if (state.selectedAssets.length === 0) return toast('Select at least one asset', 'error');
   if (state.selectedExpenses.length === 0) return toast('No expenses to assign', 'error');
-  
-  const expenses = state.selectedExpenses.map(e => ({
-    expenseId: e.expenseId, expenseName: e.expenseName,
-    amountPerAsset: e.amountPerAsset, description: e.description || ''
-  }));
-  
-  const res = await apiPost({
-    action: 'createSession',
-    customerId: state.selectedCustomer.id,
-    customerName: state.selectedCustomer.name,
-    assetIds: state.selectedAssets,
-    assetType: type,
-    expenses,
-    user: state.user.username
-  });
-  if (!res.success) return toast(res.error, 'error');
-  
-  // If loader changed prices, create pending requests
-  const priceChanges = state.selectedExpenses.filter(e => e._pendingPriceChange);
-  if (state.user.role === 'loader' && priceChanges.length > 0) {
-    for (const e of priceChanges) {
-      await apiPost({
-        action: 'updateExpensePrice',
-        sessionId: res.sessionId,
-        invoiceId: res.invoiceId,
-        expenseId: e.expenseId,
-        expenseName: e.expenseName,
-        oldAmount: e._pendingPriceChange.oldAmount,
-        newAmount: e._pendingPriceChange.newAmount,
-        user: state.user.username
-      });
+
+  await withLoader('Creating invoice...', async () => {
+    const expenses = state.selectedExpenses.map(e => ({
+      expenseId: e.expenseId, expenseName: e.expenseName,
+      amountPerAsset: e.amountPerAsset, description: e.description || ''
+    }));
+
+    const res = await apiPost({
+      action: 'createSession',
+      customerId: state.selectedCustomer.id,
+      customerName: state.selectedCustomer.name,
+      assetIds: state.selectedAssets,
+      assetType: type,
+      expenses,
+      user: state.user.username
+    });
+    if (!res.success) return toast(res.error, 'error');
+
+    const priceChanges = state.selectedExpenses.filter(e => e._pendingPriceChange);
+    if (state.user.role === 'loader' && priceChanges.length > 0) {
+      for (const e of priceChanges) {
+        await apiPost({
+          action: 'updateExpensePrice',
+          sessionId: res.sessionId,
+          invoiceId: res.invoiceId,
+          expenseId: e.expenseId,
+          expenseName: e.expenseName,
+          oldAmount: e._pendingPriceChange.oldAmount,
+          newAmount: e._pendingPriceChange.newAmount,
+          user: state.user.username
+        });
+      }
+      toast('Submitted with price changes pending admin approval', 'success');
+    } else {
+      toast('Session created successfully', 'success');
     }
-    toast('Submitted with price changes pending admin approval', 'success');
-  } else {
-    toast('Session created successfully', 'success');
-  }
-  
-  state.selectedCustomer = null;
-  state.selectedAssets = [];
-  navigate('dashboard');
+
+    state.selectedCustomer = null;
+    state.selectedAssets = [];
+    navigate('dashboard');
+  });
 }
 
 function showAddCustomer() {
@@ -819,12 +877,15 @@ async function createCustomer() {
   const phone = document.getElementById('newCustPhone').value.trim();
   const address = document.getElementById('newCustAddr').value.trim();
   if (!name) return toast('Name required', 'error');
-  const res = await apiPost({ action: 'createCustomer', name, phone, address, user: state.user.username });
-  if (!res.success) return toast(res.error, 'error');
-  toast('Customer created', 'success');
-  closeModal();
-  state.allCustomers.push(res.customer);
-  selectCustomer(res.customer.id);
+  const btn = event && event.target ? event.target : null;
+  await withLoader('Creating customer...', async () => {
+    const res = await apiPost({ action: 'createCustomer', name, phone, address, user: state.user.username });
+    if (!res.success) return toast(res.error, 'error');
+    toast('Customer created', 'success');
+    closeModal();
+    state.allCustomers.push(res.customer);
+    selectCustomer(res.customer.id);
+  });
 }
 
 // ============ EMPTY TANK ============
@@ -866,20 +927,24 @@ async function emptySession(id) {
       <label>Amount Received</label>
       <input id="payAmount" type="number" step="0.01" min="0" value="${Number(invoice.balance).toFixed(2)}">
     </div>
-    <button class="btn btn-success" onclick="submitPayment('${invoice.id}','${session.id}')">Pay & Download Receipt</button>
+    <button class="btn btn-success" onclick="submitPayment('${invoice.id}','${session.id}', this)">Pay & Download Receipt</button>
   `;
   openModal('Empty Tank · ' + session.customerName, body);
 }
 
-async function submitPayment(invoiceId, sessionId) {
+async function submitPayment(invoiceId, sessionId, btn) {
   const amount = Number(document.getElementById('payAmount').value);
   if (!amount || amount <= 0) return toast('Enter valid amount', 'error');
-  const res = await apiPost({ action: 'recordPayment', invoiceId, sessionId, amount, user: state.user.username });
-  if (!res.success) return toast(res.error, 'error');
-  toast(res.fullyPaid ? 'Fully paid. Tank emptied.' : 'Payment recorded', 'success');
-  generateReceiptPDF(res.receipt);
-  closeModal();
-  if (state.page === 'empty') loadPage();
+  setBtnLoading(btn, true);
+  await withLoader('Recording payment...', async () => {
+    const res = await apiPost({ action: 'recordPayment', invoiceId, sessionId, amount, user: state.user.username });
+    if (!res.success) { toast(res.error, 'error'); return; }
+    toast(res.fullyPaid ? 'Fully paid. Tank emptied.' : 'Payment recorded', 'success');
+    generateReceiptPDF(res.receipt);
+    closeModal();
+    if (state.page === 'empty') loadPage();
+  });
+  setBtnLoading(btn, false);
 }
 
 // ============ RECEIPT PDF ============
@@ -1003,20 +1068,24 @@ async function viewPending(id) {
 }
 
 async function approvePending(id) {
-  const res = await apiPost({ action: 'approvePending', pendingId: id, user: state.user.username });
-  if (!res.success) return toast(res.error, 'error');
-  toast('Approved', 'success');
-  closeModal();
-  loadPage();
+  await withLoader('Approving...', async () => {
+    const res = await apiPost({ action: 'approvePending', pendingId: id, user: state.user.username });
+    if (!res.success) return toast(res.error, 'error');
+    toast('Approved', 'success');
+    closeModal();
+    loadPage();
+  });
 }
 
 async function declinePending(id) {
   if (!confirm('Decline? Tanks will remain empty and session will be cancelled.')) return;
-  const res = await apiPost({ action: 'declinePending', pendingId: id, user: state.user.username });
-  if (!res.success) return toast(res.error, 'error');
-  toast('Declined', 'success');
-  closeModal();
-  loadPage();
+  await withLoader('Declining...', async () => {
+    const res = await apiPost({ action: 'declinePending', pendingId: id, user: state.user.username });
+    if (!res.success) return toast(res.error, 'error');
+    toast('Declined', 'success');
+    closeModal();
+    loadPage();
+  });
 }
 
 // ============ REPORTS ============
@@ -1141,6 +1210,7 @@ async function renderDriver(el) {
   ]);
   const rep = repRes;
   const customers = custRes.customers || [];
+  state.allCustomers = customers;
   
   el.innerHTML = `
     <div class="tabs">
@@ -1162,7 +1232,7 @@ async function renderDriver(el) {
         <div class="field"><label>Amount per Trip</label><input id="tripRate" type="number" min="0" step="0.01" value="50"></div>
         <div class="field"><label>Date</label><input id="tripDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
         <div class="field"><label>Notes</label><input id="tripNotes" type="text"></div>
-        <button class="btn" onclick="submitTrip()">Log Trip</button>
+        <button class="btn" onclick="submitTrip(this)">Log Trip</button>
       </div>
     </div>
     
@@ -1210,7 +1280,6 @@ function driverTab(tab, btn) {
   btn.classList.add('active');
   const el = document.getElementById('driverTabContent');
   if (tab === 'trips') {
-    // Re-render current trips form by calling loadPage
     loadPage();
   } else if (tab === 'expense') {
     el.innerHTML = `
@@ -1219,16 +1288,15 @@ function driverTab(tab, btn) {
         <div class="field"><label>Description</label><input id="expDesc" type="text"></div>
         <div class="field"><label>Amount</label><input id="expAmt" type="number" step="0.01" min="0"></div>
         <div class="field"><label>Date</label><input id="expDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
-        <button class="btn" onclick="submitDriverExpense()">Log Expense</button>
+        <button class="btn" onclick="submitDriverExpense(this)">Log Expense</button>
       </div>
     `;
   } else if (tab === 'report') {
-    // Already showing report below
     el.innerHTML = '<div class="card"><p style="color:#8a94a6;font-size:13px">See report below</p></div>';
   }
 }
 
-async function submitTrip() {
+async function submitTrip(btn) {
   const customerId = document.getElementById('tripCustomer').value;
   const customer = (state.allCustomers || []).find(c => String(c.id) === String(customerId));
   const trips = Number(document.getElementById('tripCount').value);
@@ -1237,27 +1305,35 @@ async function submitTrip() {
   const notes = document.getElementById('tripNotes').value;
   if (!customerId) return toast('Select a customer', 'error');
   if (!trips || trips <= 0) return toast('Enter number of trips', 'error');
-  const res = await apiPost({
-    action: 'logTrip', driverUsername: state.user.username,
-    customerId, customerName: customer ? customer.name : '', trips, amountPerTrip: rate, tripDate, notes
+  setBtnLoading(btn, true);
+  await withLoader('Logging trip...', async () => {
+    const res = await apiPost({
+      action: 'logTrip', driverUsername: state.user.username,
+      customerId, customerName: customer ? customer.name : '', trips, amountPerTrip: rate, tripDate, notes
+    });
+    if (!res.success) { toast(res.error, 'error'); return; }
+    toast('Trip logged', 'success');
+    loadPage();
   });
-  if (!res.success) return toast(res.error, 'error');
-  toast('Trip logged', 'success');
-  loadPage();
+  setBtnLoading(btn, false);
 }
 
-async function submitDriverExpense() {
+async function submitDriverExpense(btn) {
   const description = document.getElementById('expDesc').value.trim();
   const amount = Number(document.getElementById('expAmt').value);
   const expenseDate = document.getElementById('expDate').value;
   if (!description || !amount) return toast('Fill all fields', 'error');
-  const res = await apiPost({
-    action: 'logDriverExpense', driverUsername: state.user.username,
-    description, amount, expenseDate
+  setBtnLoading(btn, true);
+  await withLoader('Logging expense...', async () => {
+    const res = await apiPost({
+      action: 'logDriverExpense', driverUsername: state.user.username,
+      description, amount, expenseDate
+    });
+    if (!res.success) { toast(res.error, 'error'); return; }
+    toast('Expense logged', 'success');
+    loadPage();
   });
-  if (!res.success) return toast(res.error, 'error');
-  toast('Expense logged', 'success');
-  loadPage();
+  setBtnLoading(btn, false);
 }
 
 function driverFilter() {
@@ -1289,7 +1365,7 @@ async function renderProfile(el) {
             <option value="admin">Admin</option>
           </select>
         </div>
-        <button class="btn" onclick="createUser()">Create User</button>
+        <button class="btn" onclick="createUser(this)">Create User</button>
       </div>
     ` : ''}
     <div class="card">
@@ -1298,18 +1374,22 @@ async function renderProfile(el) {
   `;
 }
 
-async function createUser() {
+async function createUser(btn) {
   const fullName = document.getElementById('nuName').value.trim();
   const username = document.getElementById('nuUser').value.trim();
   const password = document.getElementById('nuPass').value;
   const role = document.getElementById('nuRole').value;
   if (!fullName || !username || !password) return toast('Fill all fields', 'error');
-  const res = await apiPost({ action: 'createUser', username, password, role, fullName, user: state.user.username });
-  if (!res.success) return toast(res.error, 'error');
-  toast('User created', 'success');
-  document.getElementById('nuName').value = '';
-  document.getElementById('nuUser').value = '';
-  document.getElementById('nuPass').value = '';
+  setBtnLoading(btn, true);
+  await withLoader('Creating user...', async () => {
+    const res = await apiPost({ action: 'createUser', username, password, role, fullName, user: state.user.username });
+    if (!res.success) { toast(res.error, 'error'); return; }
+    toast('User created', 'success');
+    document.getElementById('nuName').value = '';
+    document.getElementById('nuUser').value = '';
+    document.getElementById('nuPass').value = '';
+  });
+  setBtnLoading(btn, false);
 }
 
 // ============ MODAL ============
