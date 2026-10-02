@@ -114,7 +114,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-tanks { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
 
-/* ===== NEW TANK CARD (copied from donor) ===== */
+/* TANK CARD */
 .tank-grid-wrapper { flex: 1; overflow-y: auto; padding: 0 12px 8px; }
 .tank-grid { display: grid; gap: 10px; align-content: start; }
 .tank-grid.grid-9-row { grid-template-columns: repeat(9, minmax(0, 1fr)); }
@@ -245,7 +245,6 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
   </div>
 </div>
 
-<!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo">EM</div>
@@ -257,7 +256,6 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
   </div>
 </div>
 
-<!-- APP -->
 <div id="app" class="app hidden">
   <div class="header">
     <div>
@@ -276,7 +274,7 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 
 <script>
 // ============ CONFIG ============
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyRU-izhftUIblHcqncJa5ooQ3M7I0Ts7UXwt85PKJTQbTBo88QiKrdVJGKrEHLnQ/exec';
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyqtcVWtiDIE9_V2WFStmyxqeqkvIkSyqolmnC94Cda9gix_G42QETtCRSZzuD_5Wo/exec';
 
 // ============ STATE ============
 const state = {
@@ -288,6 +286,7 @@ const state = {
   selectedCustomer: null,
   selectedAssets: [],
   selectedExpenses: [],
+  invoiceNumber: '',
   filter: { from: '', to: '', account: 'all' },
   driverTab: 'trips'
 };
@@ -300,7 +299,6 @@ async function apiGet(params) {
 }
 function newWriteId() { return 'WID-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9); }
 async function apiPost(body) {
-  // Auto-inject writeId for idempotency if not present
   if (!body.writeId && body.action !== 'login') body.writeId = newWriteId();
   const res = await fetch(WEBAPP_URL, {
     method: 'POST',
@@ -321,6 +319,45 @@ function setBtnLoading(btn, loading) {
   if (!btn) return;
   if (loading) { btn.classList.add('is-loading'); btn.disabled = true; }
   else { btn.classList.remove('is-loading'); btn.disabled = false; }
+}
+
+// ============ FORM DRAFT PRESERVATION ============
+// Capture all input values (keyed by id) BEFORE a re-render, restore AFTER.
+// Skips password fields and read-only fields.
+function captureFormDrafts() {
+  const drafts = {};
+  document.querySelectorAll('input, select, textarea').forEach(el => {
+    if (!el.id) return;
+    if (el.type === 'password') return;
+    if (el.type === 'checkbox' || el.type === 'radio') {
+      drafts[el.id] = { value: el.checked, type: 'checked' };
+    } else {
+      drafts[el.id] = { value: el.value, type: 'value' };
+    }
+  });
+  return drafts;
+}
+function restoreFormDrafts(drafts) {
+  if (!drafts) return;
+  Object.keys(drafts).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const d = drafts[id];
+    if (d.type === 'checked') el.checked = d.value;
+    else el.value = d.value;
+  });
+}
+// Has the user focused/typed into any input on the current page?
+function userIsTyping() {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return false;
+  if (el.type === 'password') return true;
+  if (el.type === 'date' || el.type === 'number' || el.type === 'text' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') {
+    return el.value && el.value.toString().length > 0;
+  }
+  return false;
 }
 
 // ============ TOAST ============
@@ -412,6 +449,7 @@ function navigate(page) {
     state.selectedCustomer = null;
     state.selectedAssets = [];
     state.selectedExpenses = [];
+    state.invoiceNumber = '';
   }
   state.page = page;
   buildNav();
@@ -428,20 +466,13 @@ function startAutoRefresh() {
   stopAutoRefresh();
   state.refreshTimer = setInterval(() => {
     if (document.visibilityState !== 'visible') return;
+    // Skip auto-refresh if user is currently typing into any input
+    if (userIsTyping()) return;
     // Skip on load workspace if user has started work
     if ((state.page === 'loadTank' || state.page === 'loadBoiler') &&
         (state.selectedCustomer || state.selectedAssets.length > 0)) return;
-    // Skip on driver page if user has typed in a form (avoid wiping their input)
-    if (state.page === 'driver') {
-      const custEl = document.getElementById('tripCustomer');
-      const countEl = document.getElementById('tripCount');
-      const rateEl = document.getElementById('tripRate');
-      const descEl = document.getElementById('expDesc');
-      const amtEl = document.getElementById('expAmt');
-      const hasTripInput = custEl && custEl.value;
-      const hasExpInput = (descEl && descEl.value) || (amtEl && amtEl.value);
-      if (hasTripInput || hasExpInput) return;
-    }
+    // Skip on settings — user may be mid-edit
+    if (state.page === 'settings') return;
     loadPage(true);
   }, 5000);
 }
@@ -453,11 +484,15 @@ function manualRefresh() {
   loadPage();
 }
 
-// ============ PAGE LOADER ============
+// ============ PAGE LOADER (with form draft preservation) ============
 async function loadPage(silent) {
   if (state.loading) return;
   state.loading = true;
   const el = document.getElementById('pageContent');
+
+  // Capture form drafts before re-rendering (so silent auto-refresh doesn't wipe input)
+  const drafts = captureFormDrafts();
+
   if (!silent) {
     el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
     showLoader('Loading ' + (PAGE_TITLES[state.page] || '...'));
@@ -474,51 +509,68 @@ async function loadPage(silent) {
   } catch (e) {
     el.innerHTML = '<div class="card"><p style="color:red">Error: ' + e.message + '</p></div>';
   } finally {
+    // Restore user input for silent refreshes (also restores on non-silent, harmless)
+    if (silent) restoreFormDrafts(drafts);
     state.loading = false;
     if (!silent) hideLoader();
   }
 }
 
-// ============ DASHBOARD ============
+// ============ DASHBOARD (fixed: no double count) ============
 async function renderDashboard(el) {
   const res = await apiGet({ action: 'dashboard' });
   if (!res.success) throw new Error(res.error);
   document.getElementById('headerSub').textContent = 'Updated ' + new Date().toLocaleTimeString();
-  const { tanks, boilers } = res;
+
+  // Compute stats directly from items arrays to avoid any drift
+  const tankItems = (res.tanks && res.tanks.items) || [];
+  const boilerItems = (res.boilers && res.boilers.items) || [];
+
+  const tankTotal = tankItems.length;
+  const tankVacant = tankItems.filter(t => String(t.status).toLowerCase() === 'vacant').length;
+  const tankOccupied = tankTotal - tankVacant;
+
+  const boilerTotal = boilerItems.length;
+  const boilerVacant = boilerItems.filter(b => String(b.status).toLowerCase() === 'vacant').length;
+  const boilerOccupied = boilerTotal - boilerVacant;
+
   el.innerHTML = `
     <div class="kpi-grid">
-      <div class="kpi-card"><div class="kpi-title">Tanks Total</div><div class="kpi-value">${tanks.total}</div></div>
-      <div class="kpi-card"><div class="kpi-title">Vacant Tanks</div><div class="kpi-value" style="color:#16a34a">${tanks.vacant}</div></div>
-      <div class="kpi-card"><div class="kpi-title">Occupied Tanks</div><div class="kpi-value" style="color:#dc2626">${tanks.occupied}</div></div>
-      <div class="kpi-card"><div class="kpi-title">Boilers Total</div><div class="kpi-value">${boilers.total}</div></div>
-      <div class="kpi-card"><div class="kpi-title">Vacant Boilers</div><div class="kpi-value" style="color:#16a34a">${boilers.vacant}</div></div>
-      <div class="kpi-card"><div class="kpi-title">Occupied Boilers</div><div class="kpi-value" style="color:#dc2626">${boilers.occupied}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Tanks Total</div><div class="kpi-value">${tankTotal}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Vacant Tanks</div><div class="kpi-value" style="color:#16a34a">${tankVacant}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Occupied Tanks</div><div class="kpi-value" style="color:#dc2626">${tankOccupied}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Boilers Total</div><div class="kpi-value">${boilerTotal}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Vacant Boilers</div><div class="kpi-value" style="color:#16a34a">${boilerVacant}</div></div>
+      <div class="kpi-card"><div class="kpi-title">Occupied Boilers</div><div class="kpi-value" style="color:#dc2626">${boilerOccupied}</div></div>
     </div>
-    <div class="section-title">Cyanidation Tanks</div>
+
+    <div class="section-title">Cyanidation Tanks (${tankTotal})</div>
     <div class="tank-grid-wrapper">
-      <div class="tank-grid ${tanks.items.length > 9 ? 'grid-9-row' : 'grid-standard'}">
-        ${tanks.items.map(t => renderTankCard(t, null)).join('')}
+      <div class="tank-grid ${tankTotal > 9 ? 'grid-9-row' : 'grid-standard'}">
+        ${tankItems.map(t => renderTankCard({ ...t, type: 'tank' })).join('')}
       </div>
     </div>
-    <div class="section-title">Boilers</div>
+
+    <div class="section-title">Boilers (${boilerTotal})</div>
     <div class="tank-grid-wrapper">
-      <div class="tank-grid ${boilers.items.length > 9 ? 'grid-9-row' : 'grid-standard'}">
-        ${boilers.items.map(b => renderTankCard(b, null)).join('')}
+      <div class="tank-grid ${boilerTotal > 9 ? 'grid-9-row' : 'grid-standard'}">
+        ${boilerItems.map(b => renderTankCard({ ...b, type: 'boiler' })).join('')}
       </div>
     </div>
   `;
 }
-function renderTankCard(t, session) {
+function renderTankCard(t) {
   const status = String(t.status || '').toLowerCase();
   let badgeClass = 'badge-vacant';
   let displayStatus = 'VACANT';
   if (status === 'occupied') { badgeClass = 'badge-occupied'; displayStatus = 'OCCUPIED'; }
   else if (status === 'ready_to_empty') { badgeClass = 'badge-ready'; displayStatus = 'READY TO EMPTY'; }
-  const customerInfo = session ? session.customerName : (t.customerName || 'Vacant');
-  const invoiceInfo = session ? session.invoiceNumber : (t.invoiceNumber || '—');
-  const daysLeft = session && session.daysLeft != null ? session.daysLeft + ' Days Left' : '—';
+  const customerInfo = t.customerName || 'Vacant';
+  const invoiceInfo = t.invoiceNumber || '—';
+  const daysLeft = t.daysLeft != null ? t.daysLeft + ' Days Left' : '—';
+  const type = t.type || 'tank';
   return `
-    <div class="tank-card" onclick="viewAsset('${t.type || 'tank'}','${t.id}')">
+    <div class="tank-card" onclick="viewAsset('${type}','${t.id}')">
       <div class="tank-header">
         <div class="tank-title">${t.name || t.id}</div>
         <span class="badge ${badgeClass}">${displayStatus}</span>
@@ -632,7 +684,6 @@ async function renderLoad(el, type) {
   const preservedExpenses = state.selectedExpenses && state.selectedExpenses.length > 0
     ? state.selectedExpenses
     : allExpenses.map(e => ({ expenseId: e.id, expenseName: e.name, amountPerAsset: Number(e.amount), description: '' }));
-
   const preservedInvoice = state.invoiceNumber || '';
 
   el.innerHTML = `
@@ -1211,7 +1262,7 @@ function settingsTab(tab, btn) {
   if (tab === 'account') {
     el.innerHTML = `
       <div class="card" style="text-align:center">
-        <div class="avatar" style="width:70px;height:70px;font-size:28px;margin:0 auto 10px;background:#0641ab;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700">
+        <div style="width:70px;height:70px;font-size:28px;margin:0 auto 10px;background:#0641ab;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700">
           ${state.user.fullName ? state.user.fullName[0].toUpperCase() : state.user.username[0].toUpperCase()}
         </div>
         <h2 style="margin:0;color:#0641ab">${state.user.fullName || state.user.username}</h2>
@@ -1276,7 +1327,7 @@ async function toggleExpenseActive(id, active) {
   });
 }
 
-// ============ DRIVER (fixed: preserves input) ============
+// ============ DRIVER ============
 async function renderDriver(el) {
   document.getElementById('headerSub').textContent = 'Driver · Trips & Expenses';
   const from = state.filter.from || '';
