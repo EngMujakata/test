@@ -1,1807 +1,1301 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Enican Mines — Cyanidation Tank Management System</title>
-  <meta name="theme-color" content="#0641ab">
-  <link rel="manifest" href="manifest.json">
-  <style>
-    :root {
-      --bg-main: #f4f6f8;
-      --card-bg: #ffffff;
-      --primary: #0641ab;
-      --primary-light: #1a5ec9;
-      --accent: #0641ab;
-      --accent-hover: #05328a;
-      --success: #16a34a;
-      --warning: #ea580c;
-      --danger: #dc2626;
-      --text-main: #0f172a;
-      --text-muted: #64748b;
-      --border-color: #e2e8f0;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
-      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
-      --radius: 12px;
-      --header-bg: #ffffff;
-    }
-
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-body { background-color: var(--bg-main); color: var(--text-main); padding-bottom: 80px; -webkit-font-smoothing: antialiased; height: 100vh; overflow: hidden; }
-
-.top-header { 
-  background-color: var(--header-bg); 
-  color: var(--primary); 
-  padding: 12px 16px; 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  position: sticky; 
-  top: 0; 
-  z-index: 100; 
-  box-shadow: var(--shadow-md); 
-  border-bottom: 2px solid var(--primary);
-}
-.brand-section { display: flex; align-items: center; gap: 12px; }
-.brand-logo { height: 42px; width: auto; max-width: 140px; object-fit: contain; }
-.brand-title { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.5px; color: var(--primary); }
-
-.sync-badge { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-.sync-online { background-color: #dcfce7; color: #15803d; }
-.sync-syncing { background-color: #fef9c3; color: #a16207; }
-.sync-offline { background-color: #fee2e2; color: #b91c1c; }
-.sync-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-
-.menu-btn { background: none; border: none; color: var(--primary); cursor: pointer; padding: 8px; }
-.menu-btn svg { width: 28px; height: 28px; fill: var(--primary); }
-
-.drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); opacity: 0; pointer-events: none; transition: opacity 0.3s ease; z-index: 200; }
-.drawer-overlay.active { opacity: 1; pointer-events: auto; }
-.drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: var(--card-bg); z-index: 201; transition: transform 0.3s ease; box-shadow: var(--shadow-md); display: flex; flex-direction: column; }
-.drawer.active { transform: translateX(280px); }
-.drawer-header { padding: 20px; background: var(--primary); color: white; font-weight: 700; font-size: 1.1rem; display: flex; justify-content: space-between; align-items: center; }
-.drawer-header .user-info { font-size: 0.8rem; font-weight: 400; opacity: 0.9; }
-.drawer-menu { list-style: none; padding: 12px 0; overflow-y: auto; flex: 1; }
-.drawer-item { padding: 14px 20px; display: flex; align-items: center; gap: 12px; font-weight: 500; cursor: pointer; color: var(--text-main); border-bottom: 1px solid var(--border-color); }
-.drawer-item:hover { background-color: var(--bg-main); }
-.drawer-item svg { width: 20px; height: 20px; fill: var(--text-muted); }
-.drawer-item.logout { color: var(--danger); border-top: 2px solid var(--border-color); margin-top: 8px; }
-.drawer-item.logout svg { fill: var(--danger); }
-
-.container { max-width: 1400px; margin: 0 auto; padding: 16px; height: calc(100vh - 140px); overflow: hidden; display: flex; flex-direction: column; }
-
-.login-overlay { position: fixed; inset: 0; background: var(--primary); z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 20px; }
-.login-overlay.hidden { display: none; }
-.login-box { background: white; padding: 40px 30px; border-radius: var(--radius); max-width: 400px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-.login-box h1 { font-size: 1.5rem; color: var(--primary); margin-bottom: 8px; text-align: center; }
-.login-box .sub { text-align: center; color: var(--text-muted); margin-bottom: 24px; font-size: 0.9rem; }
-.login-box .form-group { margin-bottom: 16px; }
-.login-box .form-label { display: block; font-weight: 600; margin-bottom: 4px; color: var(--text-main); }
-.login-box .form-input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; }
-.login-box .form-input:focus { outline: none; border-color: var(--primary); }
-.login-box .btn { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; }
-.login-box .btn:hover { background: var(--accent-hover); }
-.login-error { color: var(--danger); font-size: 0.85rem; text-align: center; margin-top: 8px; display: none; }
-.login-loading { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; display: none; }
-
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; flex-shrink: 0; }
-.kpi-card { background: var(--card-bg); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center; cursor: pointer; transition: all 0.2s; }
-.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary); }
-.kpi-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
-.kpi-value { font-size: 1.3rem; font-weight: 800; color: var(--text-main); }
-
-.view-section { display: none; height: 100%; overflow: hidden; }
-.view-section.active { display: flex; flex-direction: column; }
-
-.section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; flex-shrink: 0; }
-
-.tank-grid-wrapper { flex: 1; overflow-y: auto; padding-bottom: 8px; }
-.tank-grid { 
-  display: grid; 
-  gap: 10px; 
-  align-content: start;
-}
-.tank-grid.grid-9-row {
-  grid-template-columns: repeat(9, minmax(0, 1fr));
-}
-.tank-grid.grid-standard {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-}
-@media (max-width: 1200px) { 
-  .tank-grid.grid-9-row { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } 
-}
-@media (max-width: 767px) { 
-  .tank-grid.grid-9-row, .tank-grid.grid-standard { grid-template-columns: repeat(2, 1fr); }
-}
-
-.tank-card { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); overflow: hidden; display: flex; flex-direction: column; }
-.tank-header { padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-bottom: 1px solid var(--border-color); }
-.tank-title { font-weight: 800; font-size: 0.85rem; }
-.badge { padding: 3px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #ffffff; }
-.badge-vacant { background-color: var(--success) !important; color: #ffffff !important; }
-.badge-occupied { background-color: var(--warning) !important; color: #ffffff !important; }
-.badge-ready { background-color: #d97706 !important; color: #ffffff !important; }
-.badge-overdue { background-color: var(--danger) !important; color: #ffffff !important; }
-.badge-completed { background-color: #0284c7 !important; color: #ffffff !important; }
-
-.tank-body { padding: 8px 10px; flex: 1; font-size: 0.75rem; line-height: 1.3; }
-.tank-field { margin-bottom: 4px; }
-.tank-field-label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-.tank-field-value { font-weight: 600; color: var(--text-main); font-size: 0.75rem; word-break: break-word; }
-.progress-bar-container { width: 100%; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 4px; }
-.progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
-.progress-bar-fill.overdue { background: var(--danger); }
-
-.workspace-card { background: var(--card-bg); border-radius: var(--radius); border: 1px solid var(--border-color); padding: 16px; box-shadow: var(--shadow-sm); margin-bottom: 12px; flex-shrink: 0; }
-.workspace-card-scroll { flex: 1; overflow-y: auto; }
-.form-group { margin-bottom: 12px; }
-.form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
-.form-input, .form-select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; background: #fff; }
-.form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
-
-.btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; border-radius: 8px; font-weight: 700; border: none; cursor: pointer; transition: background-color 0.2s; gap: 8px; font-size: 0.9rem; }
-.btn-primary { background: var(--accent); color: white; }
-.btn-primary:hover { background: var(--accent-hover); }
-.btn-success { background: var(--success); color: white; }
-.btn-danger { background: var(--danger); color: white; }
-.btn-secondary { background: #64748b; color: white; }
-.btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
-.btn-primary-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
-.btn-primary-outline:hover { background: var(--primary); color: white; }
-
-.selectable-tank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 8px; }
-.selectable-tank { padding: 10px; border: 2px solid var(--border-color); border-radius: 8px; text-align: center; cursor: pointer; font-weight: 700; background: var(--bg-main); font-size: 0.85rem; }
-.selectable-tank.selected { border-color: var(--accent); background: #eff6ff; color: var(--accent); }
-
-.data-table-container { overflow-x: auto; margin: 8px 0; border: 1px solid var(--border-color); border-radius: 8px; }
-.data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.8rem; }
-.data-table th, .data-table td { padding: 6px 10px; border-bottom: 1px solid var(--border-color); }
-.data-table th { background: #f8fafc; font-weight: 700; color: var(--text-muted); }
-
-.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 65px; background: var(--primary); display: flex; justify-content: space-around; align-items: center; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
-.nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; text-decoration: none; font-size: 0.7rem; font-weight: 600; width: 33.33%; height: 100%; border: none; background: none; cursor: pointer; }
-.nav-item.active { color: #ffffff; }
-.nav-item svg { width: 22px; height: 22px; fill: currentColor; margin-bottom: 2px; }
-.nav-item-load { position: relative; }
-.nav-item-load .fab-btn { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; margin-top: -24px; box-shadow: 0 4px 10px rgba(37,99,235,0.4); border: 3px solid var(--primary); }
-.nav-item-load .fab-btn svg { width: 28px; height: 28px; fill: white; margin-bottom: 0; }
-
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
-.modal-overlay.active { opacity: 1; pointer-events: auto; }
-.modal-box { background: var(--card-bg); width: 90%; max-width: 400px; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-md); }
-.modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; }
-
-/* Chart visual enhancements */
-.reports-charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
-@media (max-width: 900px) { .reports-charts-row { grid-template-columns: 1fr; } }
-
-.chart-container { position: relative; width: 100%; height: 240px; }
-canvas { width: 100% !important; height: 100% !important; display: block; }
-
-.empty-invoice-card { 
-  background: var(--card-bg); 
-  border-radius: var(--radius); 
-  border: 1px solid var(--border-color); 
-  padding: 16px; 
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.empty-invoice-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
-.empty-invoice-card.selected { border-color: var(--primary); background: #eff6ff; }
-
-.auto-add-section { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
-.auto-add-section input { width: 80px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.9rem; }
-.auto-add-section .btn { width: auto; padding: 8px 16px; }
-
-.loading-spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #e2e8f0; border-radius: 50%; border-top-color: var(--primary); animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-@media (min-width: 768px) {
-  body { padding-bottom: 0; overflow: hidden; }
-  .bottom-nav { display: none; }
-  .desktop-nav-links { display: flex; gap: 16px; align-items: center; }
-  .desktop-nav-links button { background: transparent; border: none; color: var(--primary); font-weight: 600; cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
-  .desktop-nav-links button:hover { background: rgba(6, 65, 171, 0.1); }
-  .desktop-nav-links .logout-btn { color: var(--danger); }
-  .desktop-nav-links .logout-btn:hover { background: rgba(220, 38, 38, 0.1); }
-}
-@media (max-width: 767px) { 
-  .desktop-nav-links { display: none; }
-  .container { height: calc(100vh - 130px); }
-}
-
-.view-content-scroll { flex: 1; overflow-y: auto; padding-bottom: 10px; }
-
-  </style>
-</head>
-<body>
-
-  <!-- LOGIN OVERLAY -->
-
-  <div class="login-overlay" id="loginOverlay">
-    <div class="login-box">
-      <h1>Enican Mines</h1>
-      <p class="sub">Cyanidation Tank Management</p>
-      <div class="form-group">
-        <label class="form-label">Username</label>
-        <input type="text" id="loginUsername" class="form-input" placeholder="Enter username">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" id="loginPassword" class="form-input" placeholder="Enter password" onkeydown="if(event.key==='Enter') doLogin()">
-      </div>
-      <button class="btn" onclick="doLogin()" id="loginBtn">Sign In</button>
-      <div class="login-error" id="loginError">Invalid credentials. Please try again.</div>
-      <div class="login-loading" id="loginLoading"><span class="loading-spinner"></span> Loading...</div>
-    </div>
-  </div>
-
-  <!-- TOP HEADER -->
-
-  <header class="top-header" id="mainHeader">
-    <div class="brand-section">
-      <button class="menu-btn" id="btnToggleDrawer" aria-label="Open Menu">
-        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-      </button>
-      <img src="logo.png" alt="Enican Mines Logo" class="brand-logo" id="mainLogo" onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='block';">
-      <div id="logoFallback" style="display:none; font-weight:800; font-size:1.1rem; letter-spacing:0.5px; color: var(--primary);">ENICAN MINES</div>
-    </div>
-
-<div class="desktop-nav-links">
-  <button onclick="switchView('viewDashboard')">Dashboard</button>
-  <button onclick="switchView('viewLoadWorkspace')">Load Tank</button>
-  <button onclick="switchView('viewEmptyWorkspace')">Empty Tank</button>
-  <button onclick="switchView('viewReports')">Reports</button>
-  <button onclick="switchView('viewSettings')" id="settingsNavBtn">Settings</button>
-  <button class="logout-btn" onclick="doLogout()">Logout</button>
-</div>
-
-<div class="sync-badge sync-offline" id="syncStatusBadge">
-  <span class="sync-dot" id="syncDot" style="background:#b91c1c;"></span>
-  <span id="syncStatusText">OFFLINE</span>
-</div>
-
-  </header>
-
-  <!-- SLIDE-OUT DRAWER -->
-
-  <div class="drawer-overlay" id="drawerOverlay"></div>
-  <aside class="drawer" id="drawer">
-    <div class="drawer-header">
-      <span>Enican Mines</span>
-      <span class="user-info" id="drawerUserInfo">User</span>
-    </div>
-    <ul class="drawer-menu">
-      <li class="drawer-item" onclick="switchView('viewDashboard'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Dashboard
-      </li>
-      <li class="drawer-item" onclick="switchView('viewLoadWorkspace'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Load Tank
-      </li>
-      <li class="drawer-item" onclick="switchView('viewEmptyWorkspace'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Empty Tank
-      </li>
-      <li class="drawer-item" onclick="switchView('viewLiveSessions'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg> Live Sessions
-      </li>
-      <li class="drawer-item" onclick="switchView('viewCompletedSessions'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Completed Sessions
-      </li>
-      <li class="drawer-item" onclick="switchView('viewReports'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v17zm4 0h-2v-4h2v4z"/></svg> Reports
-      </li>
-      <li class="drawer-item" onclick="switchView('viewAuditTrail'); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg> Audit Trail
-      </li>
-      <li class="drawer-item" onclick="switchView('viewSettings'); closeDrawer();" id="settingsDrawerItem">
-        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg> Settings
-      </li>
-      <li class="drawer-item logout" onclick="doLogout(); closeDrawer();">
-        <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg> Logout
-      </li>
-    </ul>
-  </aside>
-
-  <!-- MAIN CONTENT -->
-
-  <main class="container">
-
-<!-- KPI CARDS -->
-<div class="kpi-grid" id="kpiContainer">
-  <div class="kpi-card" onclick="filterTanksByStatus('OCCUPIED')">
-    <div class="kpi-title">Occupied Tanks</div>
-    <div class="kpi-value" id="kpiOccupied">0</div>
-  </div>
-  <div class="kpi-card" onclick="filterTanksByStatus('VACANT')">
-    <div class="kpi-title">Vacant Tanks</div>
-    <div class="kpi-value" id="kpiVacant">0</div>
-  </div>
-  <div class="kpi-card" onclick="switchView('viewCompletedSessions')">
-    <div class="kpi-title">Monthly Completed</div>
-    <div class="kpi-value" id="kpiMonthlyCompleted">0</div>
-  </div>
-  <div class="kpi-card" onclick="manualSyncTrigger()">
-    <div class="kpi-title">Pending Syncs</div>
-    <div class="kpi-value" id="kpiPendingSyncs">0</div>
-  </div>
-</div>
-
-<!-- VIEW 1: DASHBOARD -->
-<section id="viewDashboard" class="view-section active">
-  <div class="section-title">
-    <span>Cyanidation Tanks</span>
-    <button class="btn btn-primary-outline" style="width:auto; padding:4px 10px; font-size:0.75rem;" onclick="manualSyncTrigger()">Force Sync</button>
-  </div>
-  <div class="tank-grid-wrapper">
-    <div class="tank-grid grid-standard" id="tankGrid"></div>
-  </div>
-</section>
-
-<!-- VIEW 2: LOAD TANK -->
-<section id="viewLoadWorkspace" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">Load Cyanidation Tank Workspace</div>
-    <div class="workspace-card">
-      <div class="form-group">
-        <label class="form-label">STEP 1 — Invoice Number</label>
-        <input type="text" id="loadInvoiceNum" class="form-input" placeholder="e.g. INV-001">
-      </div>
-      <div class="form-group">
-        <label class="form-label">STEP 2 — Customer Details</label>
-        <input type="text" id="loadCustomerName" class="form-input" placeholder="Customer / Mining Company Name" list="customerSuggestions" style="margin-bottom: 8px;">
-        <datalist id="customerSuggestions"></datalist>
-        <input type="tel" id="loadCustomerPhone" class="form-input" placeholder="Customer Phone Number">
-      </div>
-      <div class="form-group">
-        <label class="form-label">STEP 3 — Select Vacant Tanks</label>
-        <div class="selectable-tank-grid" id="loadTankSelector"></div>
-      </div>
-    </div>
-
-    <div class="workspace-card" id="loadExpenseCard" style="display:none;">
-      <div class="section-title" id="selectedTankHeader">Tank Expenses</div>
-      <div class="form-group">
-        <label class="form-label">Add Predefined Expense</label>
-        <select id="expensePredefinedSelect" class="form-select" onchange="onPredefinedExpenseSelect()"></select>
-      </div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-        <div><label class="form-label">Qty</label><input type="number" id="expQty" class="form-input" value="1" min="1"></div>
-        <div><label class="form-label">Cost ($)</label><input type="number" id="expCostPrice" class="form-input" step="0.01"></div>
-        <div><label class="form-label">Selling ($)</label><input type="number" id="expSellingPrice" class="form-input" step="0.01"></div>
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button class="btn btn-secondary" onclick="addExpenseToCurrentTank()" style="flex:1;">Add To Selected Tank</button>
-        <button class="btn btn-primary" onclick="addExpenseToAllTanks()" style="flex:1;">Add To All Selected</button>
-      </div>
-      <div class="data-table-container">
-        <table class="data-table">
-          <thead><tr><th>Expense</th><th>Qty</th><th>Cost</th><th>Selling</th><th>Profit</th><th>Action</th></tr></thead>
-          <tbody id="tankExpenseTableBody"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:8px; font-weight:700; font-size:0.85rem;" id="tankFinancialsSummary">
-        Total Cost: $0.00 | Total Selling: $0.00 | Expected Profit: $0.00
-      </div>
-    </div>
-
-    <div class="workspace-card" id="loadStagingSummaryCard" style="display:none;">
-      <div class="section-title">Session Tanks Staging Overview</div>
-      <div id="stagedTanksList" style="margin-bottom:12px;"></div>
-      <div style="display:flex; gap:12px;">
-        <button class="btn btn-outline" onclick="resetLoadForm()">Clear Workspace</button>
-        <button class="btn btn-success" onclick="executeCompleteLoading()">COMPLETE &amp; LOCK SESSION</button>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- VIEW 3: EMPTY TANK -->
-<section id="viewEmptyWorkspace" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">Empty Tank Workspace</div>
-    <div id="emptySessionGroupList"></div>
-  </div>
-</section>
-
-<!-- VIEW 4: LIVE SESSIONS -->
-<section id="viewLiveSessions" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">Active Live Sessions</div>
-    <div class="form-group">
-      <input type="text" id="liveSessionSearch" class="form-input" placeholder="Search..." onkeyup="renderLiveSessions()">
-    </div>
-    <div id="liveSessionsList"></div>
-  </div>
-</section>
-
-<!-- VIEW 5: COMPLETED SESSIONS -->
-<section id="viewCompletedSessions" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">Completed Session Records</div>
-    <div class="form-group">
-      <input type="text" id="completedSessionSearch" class="form-input" placeholder="Search..." onkeyup="renderCompletedSessions()">
-    </div>
-    <div id="completedSessionsList"></div>
-  </div>
-</section>
-
-<!-- VIEW 6: REPORTS -->
-<section id="viewReports" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">Analytics &amp; Financial Reports</div>
-    <div class="workspace-card">
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom:12px;">
-        <div><label class="form-label">Customer</label><select id="reportFilterCustomer" class="form-select" onchange="applyReportFilters()"></select></div>
-        <div><label class="form-label">From</label><input type="date" id="reportFilterDateFrom" class="form-input" onchange="applyReportFilters()"></div>
-        <div><label class="form-label">To</label><input type="date" id="reportFilterDateTo" class="form-input" onchange="applyReportFilters()"></div>
-        <div><label class="form-label">Status</label><select id="reportFilterStatus" class="form-select" onchange="applyReportFilters()"><option value="ALL">All</option><option value="OCCUPIED">Live</option><option value="COMPLETED">Completed</option></select></div>
-      </div>
-      <button class="btn btn-outline" onclick="loadPreviousSessionData()">LOAD PREVIOUS SESSION DATA</button>
-    </div>
-
-    <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
-      <div class="kpi-card"><div class="kpi-title">Total Revenue</div><div class="kpi-value" id="reportRev">$0.00</div></div>
-      <div class="kpi-card"><div class="kpi-title">Total Costs</div><div class="kpi-value" id="reportCost">$0.00</div></div>
-      <div class="kpi-card"><div class="kpi-title">Gross Profit</div><div class="kpi-value" id="reportProfit">$0.00</div></div>
-    </div>
-
-    <div class="reports-charts-row">
-      <div class="workspace-card" style="margin-bottom:0;">
-        <div class="section-title">Revenue &amp; Cost Analysis</div>
-        <div class="chart-container"><canvas id="chartFinancials"></canvas></div>
-      </div>
-      <div class="workspace-card" style="margin-bottom:0;">
-        <div class="section-title">Tank Utilisation Status</div>
-        <div class="chart-container"><canvas id="chartUtilisation"></canvas></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- VIEW 7: AUDIT TRAIL -->
-<section id="viewAuditTrail" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">System Action Audit Log</div>
-    <div class="data-table-container">
-      <table class="data-table">
-        <thead><tr><th>Timestamp</th><th>Action</th><th>Entity</th><th>ID/Invoice</th><th>Details</th><th>User</th></tr></thead>
-        <tbody id="auditTrailTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- VIEW 8: SETTINGS -->
-<section id="viewSettings" class="view-section">
-  <div class="view-content-scroll">
-    <div class="section-title">Administrator Settings</div>
-    
-    <div class="workspace-card">
-      <div class="section-title">Manage Cyanidation Tanks</div>
-      <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <input type="text" id="newTankName" class="form-input" placeholder="Tank ID / Name">
-        <button class="btn btn-primary" style="width:auto;" onclick="addNewTank()">Add Tank</button>
-      </div>
-      
-      <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 8px;">
-        <div class="form-label">Auto-Add Multiple Tanks</div>
-        <div class="auto-add-section">
-          <label style="font-size:0.8rem; font-weight:600;">Number of tanks:</label>
-          <input type="number" id="bulkTankCount" value="10" min="1" max="100">
-          <button class="btn btn-success" style="width:auto;" onclick="autoAddMultipleTanks()">Add Tanks</button>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#123b84">
+    <meta name="description" content="Tank, boiler and grabber operations">
+    <link rel="manifest" id="app-manifest">
+    <title><?= appName ?> Operations</title>
+    <style>
+      :root {
+        --navy: #123b84;
+        --navy-2: #0b2e6c;
+        --blue: #1555c0;
+        --blue-2: #eaf1ff;
+        --ink: #18263f;
+        --muted: #72809a;
+        --line: #e0e7f1;
+        --paper: #ffffff;
+        --canvas: #f4f7fc;
+        --green: #137a53;
+        --green-bg: #e8f6ef;
+        --amber: #ad6d0b;
+        --amber-bg: #fff4dc;
+        --red: #b53440;
+        --red-bg: #fff0f1;
+        --shadow: 0 16px 48px rgba(22, 47, 92, .12);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; color: var(--ink); background: var(--canvas); }
+      button, input, select, textarea { font: inherit; }
+      button { cursor: pointer; }
+      [hidden] { display: none !important; }
+      .login-screen {
+        min-height: 100vh; display: grid; place-items: center; padding: 28px;
+        background: #1246ad;
+      }
+      .login-card {
+        width: min(100%, 410px); background: white; border-radius: 18px;
+        padding: 36px 34px 32px; box-shadow: 0 24px 70px rgba(5, 21, 57, .26);
+      }
+      .brand-lockup { text-align: center; margin-bottom: 27px; }
+      .brand-mark {
+        width: 46px; height: 46px; display: grid; place-items: center; margin: 0 auto 12px;
+        color: white; background: var(--blue); border-radius: 14px; font-weight: 800; font-size: 18px;
+        box-shadow: 0 8px 18px rgba(21, 85, 192, .22);
+      }
+      .brand-lockup h1 { margin: 0; color: #1145ad; font-size: 24px; letter-spacing: -.6px; }
+      .brand-lockup p { margin: 6px 0 0; color: #687994; font-size: 13px; }
+      .field { display: grid; gap: 7px; margin: 16px 0; }
+      .field label, .label { color: #273650; font-size: 12px; font-weight: 700; }
+      .input, .select, .textarea {
+        width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #d7dfeb;
+        border-radius: 9px; color: var(--ink); background: white; outline: none;
+        transition: border-color .15s, box-shadow .15s;
+      }
+      .input:focus, .select:focus, .textarea:focus {
+        border-color: #5489e1; box-shadow: 0 0 0 3px rgba(37, 103, 211, .12);
+      }
+      .textarea { min-height: 78px; resize: vertical; }
+      .button {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        min-height: 42px; padding: 10px 15px; border: 1px solid transparent; border-radius: 9px;
+        color: white; background: var(--blue); font-weight: 700; font-size: 13px;
+        transition: transform .15s, background .15s, box-shadow .15s;
+      }
+      .button:hover { background: #0c49b3; box-shadow: 0 7px 16px rgba(21, 85, 192, .18); transform: translateY(-1px); }
+      .button:disabled { cursor: wait; opacity: .55; transform: none; box-shadow: none; }
+      .button.full { width: 100%; min-height: 46px; }
+      .button.secondary { color: var(--navy); border-color: #d4deee; background: white; box-shadow: none; }
+      .button.secondary:hover { background: #f4f7fd; }
+      .button.ghost { color: var(--navy); background: transparent; border-color: transparent; box-shadow: none; }
+      .button.danger { background: var(--red); }
+      .button.danger:hover { background: #992c37; }
+      .button.success { background: var(--green); }
+      .button.small { min-height: 34px; padding: 7px 11px; font-size: 12px; }
+      .quiet { color: var(--muted); font-size: 12px; line-height: 1.55; }
+      .error-note { color: var(--red); min-height: 18px; margin: 10px 0 0; font-size: 12px; }
+      .app-shell { min-height: 100vh; display: grid; grid-template-columns: 248px minmax(0, 1fr); }
+      .sidebar {
+        position: sticky; top: 0; display: flex; flex-direction: column; height: 100vh;
+        padding: 22px 14px 16px; color: white; background: var(--navy-2);
+      }
+      .sidebar-brand { display: flex; align-items: center; gap: 11px; padding: 0 9px 23px; }
+      .sidebar-brand .brand-mark { margin: 0; width: 38px; height: 38px; color: var(--navy); background: white; font-size: 15px; }
+      .sidebar-brand strong { display: block; font-size: 14px; letter-spacing: -.2px; }
+      .sidebar-brand small { display: block; margin-top: 3px; color: #b4c9ec; font-size: 10px; }
+      .nav-label { padding: 10px 10px 7px; color: #9fb5d8; font-size: 9px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; }
+      .nav-list { display: grid; gap: 4px; }
+      .nav-item {
+        width: 100%; display: flex; align-items: center; gap: 11px; border: 0; border-radius: 8px;
+        padding: 10px; color: #d8e5f9; background: transparent; text-align: left; font-size: 12px; font-weight: 600;
+      }
+      .nav-item:hover { background: rgba(255,255,255,.09); color: white; }
+      .nav-item.active { color: white; background: #1d58b2; box-shadow: inset 3px 0 #9fc4ff; }
+      .nav-icon { width: 18px; text-align: center; font-size: 15px; opacity: .92; }
+      .nav-count { margin-left: auto; padding: 2px 7px; border-radius: 20px; background: #f4b340; color: #1e2c45; font-size: 10px; font-weight: 800; }
+      .sidebar-spacer { flex: 1; }
+      .profile-mini { display: flex; align-items: center; gap: 10px; padding: 13px 8px 10px; border-top: 1px solid rgba(255,255,255,.13); }
+      .avatar { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: var(--navy); background: #dbe9ff; font-size: 11px; font-weight: 800; }
+      .profile-mini strong { display: block; max-width: 128px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+      .profile-mini small { display: block; margin-top: 3px; color: #a8bddf; font-size: 10px; text-transform: capitalize; }
+      .logout-link { margin-left: auto; border: 0; color: #d5e2f7; background: none; font-size: 11px; }
+      .logout-link:hover { color: white; }
+      .main-area { min-width: 0; }
+      .topbar {
+        min-height: 73px; display: flex; align-items: center; gap: 14px; padding: 0 30px;
+        border-bottom: 1px solid var(--line); background: rgba(255,255,255,.92);
+      }
+      .menu-toggle { display: none; }
+      .page-title { min-width: 0; }
+      .page-title h1 { margin: 0; font-size: 18px; letter-spacing: -.35px; }
+      .page-title p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+      .topbar-spacer { flex: 1; }
+      .live-indicator { display: inline-flex; align-items: center; gap: 7px; color: #5c6d87; font-size: 10px; }
+      .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #29a36d; box-shadow: 0 0 0 4px #e4f5ec; }
+      .refresh-button {
+        width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--line);
+        border-radius: 50%; color: var(--navy); background: white; font-size: 20px; line-height: 1;
+      }
+      .refresh-button:hover { color: white; border-color: var(--blue); background: var(--blue); }
+      .refresh-button.spinning { animation: spin .65s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      .content { width: min(100%, 1440px); margin: auto; padding: 28px 30px 46px; }
+      .page-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 20px; }
+      .page-head > div:first-child { flex: 1; }
+      .eyebrow { margin: 0 0 6px; color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; }
+      .page-head h2 { margin: 0; font-size: 22px; letter-spacing: -.65px; }
+      .page-head p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+      .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 27px; }
+      .summary-card {
+        padding: 16px 17px; border: 1px solid var(--line); border-radius: 12px; background: white;
+        box-shadow: 0 3px 12px rgba(17, 50, 99, .035);
+      }
+      .summary-card .summary-label { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; }
+      .summary-card strong { display: block; margin-top: 7px; color: var(--navy); font-size: 25px; letter-spacing: -.7px; }
+      .summary-card small { display: block; margin-top: 5px; color: #7f8ba0; font-size: 10px; }
+      .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 25px 0 12px; }
+      .section-heading h3 { margin: 0; font-size: 14px; letter-spacing: -.2px; }
+      .section-heading span { color: var(--muted); font-size: 11px; }
+      .resource-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 10px; }
+      .resource-card {
+        min-height: 106px; padding: 13px; border: 1px solid var(--line); border-radius: 11px;
+        color: var(--ink); background: white; text-align: left; transition: transform .15s, box-shadow .15s, border-color .15s;
+      }
+      .resource-card:hover { transform: translateY(-2px); border-color: #a9c2ed; box-shadow: 0 9px 22px rgba(18,59,132,.08); }
+      .resource-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .resource-card strong { font-size: 12px; }
+      .resource-card .asset-symbol { color: #7992bb; font-size: 16px; }
+      .resource-card p { margin: 13px 0 0; color: var(--muted); font-size: 10px; }
+      .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 20px; font-size: 9px; font-weight: 800; text-transform: capitalize; white-space: nowrap; }
+      .status-pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+      .status-vacant, .status-available, .status-empty { color: var(--green); background: var(--green-bg); }
+      .status-occupied, .status-open { color: var(--blue); background: var(--blue-2); }
+      .status-pending-approval, .status-pending_approval { color: var(--amber); background: var(--amber-bg); }
+      .status-completed, .status-approved { color: #59647b; background: #eef1f6; }
+      .status-declined { color: var(--red); background: var(--red-bg); }
+      .panel {
+        border: 1px solid var(--line); border-radius: 12px; background: white;
+        box-shadow: 0 3px 12px rgba(17,50,99,.035);
+      }
+      .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 15px 17px; border-bottom: 1px solid #edf1f6; }
+      .panel-head h3 { margin: 0; font-size: 13px; }
+      .panel-body { padding: 17px; }
+      .table-wrap { width: 100%; overflow: auto; }
+      table { width: 100%; border-collapse: collapse; min-width: 550px; }
+      th { padding: 10px 12px; color: #75829a; background: #f7f9fc; font-size: 9px; font-weight: 800; letter-spacing: .5px; text-align: left; text-transform: uppercase; }
+      td { padding: 11px 12px; border-top: 1px solid #edf1f6; color: #35435a; font-size: 11px; vertical-align: middle; }
+      tr:hover td { background: #fbfcfe; }
+      .table-action { border: 0; color: var(--blue); background: transparent; font-size: 11px; font-weight: 700; }
+      .empty-state { padding: 28px 18px; color: var(--muted); text-align: center; font-size: 12px; }
+      .empty-state strong { display: block; margin-bottom: 5px; color: #3d4a60; font-size: 13px; }
+      .subtle-box { padding: 13px 15px; border: 1px solid #d8e5fb; border-radius: 10px; color: #35527f; background: #f1f6ff; font-size: 11px; line-height: 1.55; }
+      .warning-box { padding: 13px 15px; border: 1px solid #f2d89e; border-radius: 10px; color: #7f5817; background: #fff8e9; font-size: 11px; line-height: 1.55; }
+      .danger-box { padding: 13px 15px; border: 1px solid #f2c6cb; border-radius: 10px; color: #8e2f38; background: #fff3f4; font-size: 11px; line-height: 1.55; }
+      .steps { display: flex; align-items: center; gap: 6px; margin: 20px 0 15px; }
+      .step { display: flex; align-items: center; gap: 7px; color: #95a0b1; font-size: 10px; font-weight: 700; }
+      .step-number { width: 24px; height: 24px; display: grid; place-items: center; border: 1px solid #d6deeb; border-radius: 50%; background: white; font-size: 10px; }
+      .step.active { color: var(--navy); }
+      .step.active .step-number { border-color: var(--blue); color: white; background: var(--blue); }
+      .step-line { width: 34px; height: 1px; background: #d8dfeb; }
+      .choice-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 9px; }
+      .choice-card {
+        display: flex; align-items: center; gap: 10px; width: 100%; min-height: 62px; padding: 12px;
+        border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: white; text-align: left;
+      }
+      .choice-card:hover, .choice-card.selected { border-color: #75a0e7; background: #f5f8ff; }
+      .choice-card input { accent-color: var(--blue); }
+      .choice-meta strong { display: block; font-size: 11px; }
+      .choice-meta small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+      .expense-row {
+        display: grid; grid-template-columns: 22px minmax(150px,1fr) minmax(90px,130px) minmax(75px,auto);
+        align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #edf1f6;
+      }
+      .expense-row:last-child { border-bottom: 0; }
+      .expense-row input[type=checkbox] { accent-color: var(--blue); }
+      .expense-row strong { display: block; font-size: 11px; }
+      .expense-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+      .per-unit { color: var(--muted); font-size: 10px; text-align: right; white-space: nowrap; }
+      .expense-price { min-height: 36px; padding: 7px 9px; }
+      .inline-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+      .inline-form .field { margin: 9px 0; }
+      .inline-form .span-2 { grid-column: span 2; }
+      .customer-results { display: grid; gap: 7px; margin-top: 12px; }
+      .search-control { position: relative; }
+      .search-control .search-icon { position: absolute; left: 12px; top: 50%; width: 15px; height: 15px; color: #8190a8; transform: translateY(-50%); pointer-events: none; }
+      .search-control .input { padding-left: 37px; }
+      .customer-result {
+        display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px;
+        border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: white; text-align: left;
+      }
+      .customer-result:hover, .customer-result.selected { border-color: #74a0e7; background: #f5f8ff; }
+      .customer-result strong { display: block; font-size: 11px; }
+      .customer-result small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+      .customer-result .button { margin-left: auto; }
+      .date-filters { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+      .date-filters .field { min-width: 135px; margin: 0; }
+      .date-filters .input { min-height: 38px; }
+      .account-cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 13px; margin: 18px 0; }
+      .account-card {
+        display: block; min-height: 140px; padding: 17px; border: 1px solid var(--line); border-radius: 12px;
+        color: var(--ink); background: white; text-align: left; transition: transform .15s, box-shadow .15s, border-color .15s;
+      }
+      .account-card:hover, .account-card.selected { transform: translateY(-2px); border-color: #90afe2; box-shadow: 0 10px 22px rgba(18,59,132,.09); }
+      .account-card .account-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; }
+      .account-card strong { display: block; margin: 13px 0 6px; color: var(--navy); font-size: 25px; letter-spacing: -.5px; }
+      .account-card small { color: var(--muted); font-size: 10px; }
+      .two-column { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 14px; }
+      .toast-stack { position: fixed; z-index: 120; top: 18px; right: 18px; display: grid; gap: 8px; width: min(370px, calc(100vw - 36px)); }
+      .toast { padding: 13px 15px; border: 1px solid #cddcf3; border-radius: 10px; color: #23416f; background: white; box-shadow: var(--shadow); font-size: 12px; animation: toast-in .2s ease-out; }
+      .toast.error { border-color: #f0c7cc; color: #872f39; }
+      .toast.success { border-color: #c4e7d5; color: #196344; }
+      @keyframes toast-in { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: translateY(0); } }
+      .modal-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(9, 22, 44, .55); }
+      .modal {
+        width: min(100%, 650px); max-height: min(88vh, 850px); overflow: hidden; border-radius: 15px;
+        background: white; box-shadow: 0 26px 80px rgba(3, 19, 49, .3); animation: modal-in .18s ease-out;
+      }
+      @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      .modal-head { display: flex; align-items: center; gap: 14px; padding: 19px 22px; border-bottom: 1px solid var(--line); }
+      .modal-head h2 { flex: 1; margin: 0; font-size: 16px; }
+      .modal-close { width: 32px; height: 32px; border: 0; border-radius: 50%; color: #66758e; background: #f2f5fa; font-size: 19px; }
+      .modal-body { max-height: calc(88vh - 130px); overflow: auto; padding: 20px 22px; }
+      .modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--line); background: #fbfcfe; }
+      .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin: 14px 0; }
+      .detail-cell { padding: 12px; border-radius: 9px; background: #f6f8fc; }
+      .detail-cell span { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+      .detail-cell strong { display: block; margin-top: 6px; font-size: 12px; overflow-wrap: anywhere; }
+      .modal-section-title { margin: 19px 0 9px; font-size: 12px; }
+      .modal-list { display: grid; gap: 8px; }
+      .modal-list-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #edf1f6; }
+      .modal-list-row:last-child { border-bottom: 0; }
+      .modal-list-row > div:first-child { flex: 1; }
+      .modal-list-row strong { display: block; font-size: 11px; }
+      .modal-list-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+      .modal-list-row .amount { color: var(--navy); font-size: 11px; font-weight: 800; white-space: nowrap; }
+      .mobile-backdrop { display: none; }
+      .install-card { max-width: 440px; padding: 18px; border: 1px solid #dce5f4; border-radius: 11px; background: #f8faff; }
+      .install-card h3 { margin: 0 0 6px; font-size: 14px; }
+      .install-card p, .install-card li { color: #586982; font-size: 11px; line-height: 1.6; }
+      .install-card ol { margin: 10px 0 0; padding-left: 20px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+      @media (max-width: 1020px) {
+        .summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .resource-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+        .account-cards { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 760px) {
+        .app-shell { display: block; }
+        .sidebar { position: fixed; z-index: 60; left: 0; top: 0; width: 265px; transform: translateX(-105%); transition: transform .2s ease; }
+        .sidebar.open { transform: translateX(0); }
+        .mobile-backdrop.open { position: fixed; z-index: 50; inset: 0; display: block; background: rgba(5,18,40,.38); }
+        .menu-toggle { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--navy); background: white; font-size: 17px; }
+        .topbar { min-height: 64px; padding: 0 15px; gap: 10px; }
+        .page-title h1 { font-size: 15px; }
+        .page-title p { font-size: 10px; }
+        .live-indicator { display: none; }
+        .content { padding: 21px 15px 36px; }
+        .page-head { align-items: flex-start; flex-direction: column; gap: 12px; }
+        .page-head h2 { font-size: 20px; }
+        .page-head .toolbar { width: 100%; }
+        .summary-grid { gap: 8px; margin: 15px 0 24px; }
+        .summary-card { padding: 13px; }
+        .summary-card strong { font-size: 22px; }
+        .resource-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+        .resource-card { min-height: 96px; padding: 11px; }
+        .two-column { grid-template-columns: 1fr; }
+        .expense-row { grid-template-columns: 20px minmax(90px,1fr) minmax(80px,112px); gap: 8px; }
+        .expense-row .per-unit { grid-column: 2 / -1; margin-top: -5px; text-align: left; }
+        .customer-result { align-items: flex-start; }
+        .customer-result .button { align-self: center; }
+        .date-filters { align-items: stretch; }
+        .date-filters .field { flex: 1 1 135px; }
+        .date-filters .button { flex: 1 1 100%; }
+        .modal-backdrop { align-items: end; padding: 0; }
+        .modal { width: 100%; max-height: 91vh; border-radius: 17px 17px 0 0; }
+        .modal-body { max-height: calc(91vh - 132px); padding: 18px 16px; }
+        .modal-head { padding: 16px; }
+        .modal-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+        .detail-grid { gap: 8px; }
+        .inline-form { grid-template-columns: 1fr; }
+        .inline-form .span-2 { grid-column: auto; }
+        .steps { gap: 4px; }
+        .step { gap: 5px; font-size: 9px; }
+        .step-line { width: 20px; }
+      }
+      @media (max-width: 400px) {
+        .summary-card .summary-label { font-size: 9px; }
+        .summary-card strong { font-size: 19px; }
+        .resource-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+        .step .step-copy { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loginScreen" class="login-screen">
+      <div class="login-card">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">EM</div>
+          <h1><?= appName ?></h1>
+          <p>Tank &amp; Boiler Operations</p>
         </div>
-      </div>
-      
-      <div class="data-table-container">
-        <table class="data-table">
-          <thead><tr><th>Tank Name</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead>
-          <tbody id="settingsTankTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-    
-    <div class="workspace-card">
-      <div class="section-title">Manage Predefined Expenses</div>
-      <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; margin-bottom:8px;">
-        <input type="text" id="newExpenseName" class="form-input" placeholder="Expense Name">
-        <input type="number" id="newExpenseCost" class="form-input" placeholder="Default Cost ($)" step="0.01">
-        <input type="number" id="newExpenseSelling" class="form-input" placeholder="Default Selling ($)" step="0.01">
-      </div>
-      <button class="btn btn-primary" style="margin-bottom:12px;" onclick="addNewPredefinedExpense()">Add Expense Item</button>
-      <div class="data-table-container">
-        <table class="data-table">
-          <thead><tr><th>Expense Item</th><th>Default Cost</th><th>Default Selling</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="settingsExpenseTableBody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</section>
-
-  </main>
-
-  <!-- MOBILE FOOTER -->
-
-  <nav class="bottom-nav">
-    <button class="nav-item" onclick="switchView('viewEmptyWorkspace')">
-      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-      <span>Empty Tank</span>
-    </button>
-    <button class="nav-item nav-item-load" onclick="switchView('viewLoadWorkspace')">
-      <div class="fab-btn"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
-      <span style="margin-top:18px;">Load Tank</span>
-    </button>
-    <button class="nav-item" onclick="switchView('viewReports')">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v17zm4 0h-2v-4h2v4z"/></svg>
-      <span>Reports</span>
-    </button>
-  </nav>
-
-  <!-- PASSWORD MODAL -->
-
-  <div class="modal-overlay" id="passwordModal">
-    <div class="modal-box">
-      <div class="modal-title">Administrator Authentication</div>
-      <div class="form-group"><label class="form-label">Enter Security Password</label><input type="password" id="adminPasswordInput" class="form-input" placeholder="Password"></div>
-      <div style="display:flex; gap:8px;"><button class="btn btn-outline" onclick="closeAuthModal()">Cancel</button><button class="btn btn-primary" onclick="verifyAdminPassword()">Login</button></div>
-    </div>
-  </div>
-
-  <script>
-    // ========================================================================
-    // ENICAN MINES — COMPLETE APPLICATION SCRIPT
-    // ========================================================================
-
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzJ2XVF80tvZlA6IU3v_E_Wa53qgAl5vs2-5uKu9ORVnm9gigkyDZvUtHXjkMvJEZJf/exec";
-    const DEVICE_ID = "DEV-" + Math.random().toString(36).substring(2, 9).toUpperCase();
-    const DEFAULT_SESSION_DAYS = 10;
-
-    let db = null;
-    let isOnline = navigator.onLine;
-    let currentUser = null;
-    let stagedLoadingData = { invoiceNumber: "", customerName: "", customerPhone: "", tanks: {} };
-    let activeSelectedTankIdForExpenses = null;
-    let currentFilterStatus = null;
-    let selectedEmptyInvoice = null;
-
-    // ------------------------------------------------------------------------
-    // INDEXEDDB INIT
-    // ------------------------------------------------------------------------
-    function initIndexedDB() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open("EnicanMinesCyanidationDB", 3);
-        request.onupgradeneeded = (e) => {
-          const database = e.target.result;
-          if (!database.objectStoreNames.contains("tanks")) {
-            const s = database.createObjectStore("tanks", { keyPath: "tankId" });
-            s.createIndex("status", "status", { unique: false });
-          }
-          if (!database.objectStoreNames.contains("customers")) {
-            database.createObjectStore("customers", { keyPath: "customerId" });
-          }
-          if (!database.objectStoreNames.contains("invoices")) {
-            const s = database.createObjectStore("invoices", { keyPath: "invoiceId" });
-            s.createIndex("invoiceNumber", "invoiceNumber", { unique: true });
-          }
-          if (!database.objectStoreNames.contains("sessions")) {
-            const s = database.createObjectStore("sessions", { keyPath: "sessionId" });
-            s.createIndex("invoiceNumber", "invoiceNumber", { unique: false });
-            s.createIndex("tankId", "tankId", { unique: false });
-            s.createIndex("status", "status", { unique: false });
-          }
-          if (!database.objectStoreNames.contains("expenses")) {
-            database.createObjectStore("expenses", { keyPath: "expenseId" });
-          }
-          if (!database.objectStoreNames.contains("sessionExpenses")) {
-            const s = database.createObjectStore("sessionExpenses", { keyPath: "sessionExpenseId" });
-            s.createIndex("sessionId", "sessionId", { unique: false });
-          }
-          if (!database.objectStoreNames.contains("payments")) {
-            database.createObjectStore("payments", { keyPath: "paymentId" });
-          }
-          if (!database.objectStoreNames.contains("auditTrail")) {
-            database.createObjectStore("auditTrail", { keyPath: "auditId" });
-          }
-          if (!database.objectStoreNames.contains("syncQueue")) {
-            const s = database.createObjectStore("syncQueue", { keyPath: "writeId" });
-            s.createIndex("timestamp", "timestamp", { unique: false });
-          }
-          if (!database.objectStoreNames.contains("users")) {
-            database.createObjectStore("users", { keyPath: "username" });
-          }
-        };
-        request.onsuccess = (e) => { db = e.target.result; resolve(db); };
-        request.onerror = (e) => reject("IndexedDB Error: " + e.target.errorCode);
-      });
-    }
-
-    function idbGet(storeName, key) {
-      return new Promise((resolve) => {
-        const tx = db.transaction(storeName, "readonly");
-        const req = tx.objectStore(storeName).get(key);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
-      });
-    }
-    function idbGetAll(storeName) {
-      return new Promise((resolve) => {
-        const tx = db.transaction(storeName, "readonly");
-        const req = tx.objectStore(storeName).getAll();
-        req.onsuccess = () => resolve(req.result || []);
-        req.onerror = () => resolve([]);
-      });
-    }
-    function idbPut(storeName, val) {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, "readwrite");
-        const req = tx.objectStore(storeName).put(val);
-        req.onsuccess = () => resolve(true);
-        req.onerror = () => reject(req.error);
-      });
-    }
-    function idbDelete(storeName, key) {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, "readwrite");
-        const req = tx.objectStore(storeName).delete(key);
-        req.onsuccess = () => resolve(true);
-        req.onerror = () => reject(req.error);
-      });
-    }
-    function idbClear(storeName) {
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, "readwrite");
-        const req = tx.objectStore(storeName).clear();
-        req.onsuccess = () => resolve(true);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    // ------------------------------------------------------------------------
-    // API CALLS - FETCH LIVE DATA
-    // ------------------------------------------------------------------------
-    async function fetchLiveData() {
-      try {
-        const response = await fetch(GAS_WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "getAllData" })
-        });
-        const data = await response.json();
-        if (data.status === "SUCCESS") {
-          await idbClear("tanks");
-          await idbClear("sessions");
-          await idbClear("expenses");
-          await idbClear("customers");
-          await idbClear("users");
-          await idbClear("auditTrail");
-          await idbClear("invoices");
-
-          if (data.tanks) {
-            for (const t of data.tanks) await idbPut("tanks", t);
-          }
-          if (data.sessions) {
-            for (const s of data.sessions) await idbPut("sessions", s);
-          }
-          if (data.expenses) {
-            for (const e of data.expenses) await idbPut("expenses", e);
-          }
-          if (data.customers) {
-            for (const c of data.customers) await idbPut("customers", c);
-          }
-          if (data.users) {
-            for (const u of data.users) await idbPut("users", u);
-          }
-          if (data.auditTrail) {
-            for (const a of data.auditTrail) await idbPut("auditTrail", a);
-          }
-          if (data.invoices) {
-            for (const inv of data.invoices) await idbPut("invoices", inv);
-          }
-          return true;
-        }
-        return false;
-      } catch (error) {
-        console.error("Failed to fetch live data:", error);
-        return false;
-      }
-    }
-
-    // ------------------------------------------------------------------------
-    // USER AUTHENTICATION & PERSISTENCE
-    // ------------------------------------------------------------------------
-    function saveSessionUser(user) {
-      if (user) {
-        localStorage.setItem("enican_user", JSON.stringify(user));
-      } else {
-        localStorage.removeItem("enican_user");
-      }
-    }
-
-    function checkPersistedUser() {
-      const saved = localStorage.getItem("enican_user");
-      if (saved) {
-        try {
-          currentUser = JSON.parse(saved);
-          applyUserUI(currentUser);
-          document.getElementById("loginOverlay").classList.add("hidden");
-          return true;
-        } catch (e) {
-          localStorage.removeItem("enican_user");
-        }
-      }
-      return false;
-    }
-
-    function applyUserUI(user) {
-      document.getElementById("drawerUserInfo").textContent = user.username + " (" + user.role + ")";
-      if (user.role !== "admin") {
-        document.getElementById("settingsNavBtn").style.display = "none";
-        document.getElementById("settingsDrawerItem").style.display = "none";
-      } else {
-        document.getElementById("settingsNavBtn").style.display = "inline-block";
-        document.getElementById("settingsDrawerItem").style.display = "flex";
-      }
-    }
-
-    async function doLogin() {
-      const username = document.getElementById("loginUsername").value.trim();
-      const password = document.getElementById("loginPassword").value.trim();
-      const errorEl = document.getElementById("loginError");
-      const loadingEl = document.getElementById("loginLoading");
-      const loginBtn = document.getElementById("loginBtn");
-
-      if (!username || !password) {
-        errorEl.style.display = "block";
-        errorEl.textContent = "Please enter both username and password.";
-        return;
-      }
-
-      loadingEl.style.display = "block";
-      loginBtn.disabled = true;
-      errorEl.style.display = "none";
-
-      try {
-        const response = await fetch(GAS_WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "getUsers" })
-        });
-        const data = await response.json();
-        
-        if (data.status === "SUCCESS" && data.users) {
-          await idbClear("users");
-          for (const u of data.users) {
-            await idbPut("users", u);
-          }
-
-          const user = data.users.find(u => u.username === username && u.password === password);
-          
-          if (user) {
-            currentUser = { username: user.username, role: user.role };
-            saveSessionUser(currentUser);
-            loadingEl.style.display = "none";
-            loginBtn.disabled = false;
-            errorEl.style.display = "none";
-            document.getElementById("loginOverlay").classList.add("hidden");
-            applyUserUI(currentUser);
-            
-            await fetchLiveData();
-            renderDashboard();
-          } else {
-            loadingEl.style.display = "none";
-            loginBtn.disabled = false;
-            errorEl.style.display = "block";
-            errorEl.textContent = "Invalid username or password.";
-          }
-        } else {
-          loadingEl.style.display = "none";
-          loginBtn.disabled = false;
-          errorEl.style.display = "block";
-          errorEl.textContent = "Could not connect to server. Please try again.";
-        }
-      } catch (error) {
-        loadingEl.style.display = "none";
-        loginBtn.disabled = false;
-        errorEl.style.display = "block";
-        errorEl.textContent = "Network error. Please check your connection.";
-        console.error("Login error:", error);
-      }
-    }
-
-    function doLogout() {
-      currentUser = null;
-      saveSessionUser(null);
-      document.getElementById("loginOverlay").classList.remove("hidden");
-      document.getElementById("loginUsername").value = "";
-      document.getElementById("loginPassword").value = "";
-      document.getElementById("loginError").style.display = "none";
-    }
-
-    // ------------------------------------------------------------------------
-    // UI HELPERS
-    // ------------------------------------------------------------------------
-    function switchView(viewId) {
-      document.querySelectorAll(".view-section").forEach(el => el.classList.remove("active"));
-      const target = document.getElementById(viewId);
-      if (target) target.classList.add("active");
-      currentFilterStatus = null;
-      document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
-      if (viewId === 'viewDashboard') renderDashboard();
-      if (viewId === 'viewLoadWorkspace') prepareLoadWorkspace();
-      if (viewId === 'viewEmptyWorkspace') renderEmptyWorkspace();
-      if (viewId === 'viewLiveSessions') renderLiveSessions();
-      if (viewId === 'viewCompletedSessions') renderCompletedSessions();
-      if (viewId === 'viewReports') renderReports();
-      if (viewId === 'viewAuditTrail') renderAuditTrail();
-      if (viewId === 'viewSettings') renderSettings();
-    }
-
-    function filterTanksByStatus(status) {
-      currentFilterStatus = status;
-      switchView('viewDashboard');
-    }
-
-    document.getElementById("btnToggleDrawer").addEventListener("click", () => {
-      document.getElementById("drawer").classList.add("active");
-      document.getElementById("drawerOverlay").classList.add("active");
-    });
-    document.getElementById("drawerOverlay").addEventListener("click", closeDrawer);
-    function closeDrawer() {
-      document.getElementById("drawer").classList.remove("active");
-      document.getElementById("drawerOverlay").classList.remove("active");
-    }
-
-    // ------------------------------------------------------------------------
-    // AUTO-ADD MULTIPLE TANKS
-    // ------------------------------------------------------------------------
-    async function autoAddMultipleTanks() {
-      const count = parseInt(document.getElementById("bulkTankCount").value) || 10;
-      if (count < 1 || count > 100) return alert("Please enter a number between 1 and 100.");
-      if (!confirm(`Are you sure you want to add ${count} new tank(s)?`)) return;
-
-      try {
-        const response = await fetch(GAS_WEB_APP_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "autoAddTanks", count })
-        });
-        const data = await response.json();
-        if (data.status === "SUCCESS") {
-          alert(`✅ Successfully added ${data.result.added} tank(s).`);
-          await fetchLiveData();
-          renderSettings();
-          renderDashboard();
-        } else {
-          alert("❌ Failed to add tanks: " + data.message);
-        }
-      } catch (error) {
-        alert("❌ Error: " + error.message);
-      }
-    }
-
-    // ------------------------------------------------------------------------
-    // DASHBOARD
-    // ------------------------------------------------------------------------
-    async function renderDashboard() {
-      const tanks = await idbGetAll("tanks");
-      const sessions = await idbGetAll("sessions");
-      const syncQueue = await idbGetAll("syncQueue");
-
-      const occupiedCount = tanks.filter(t => t.status === "OCCUPIED" || t.status === "READY_TO_EMPTY").length;
-      const vacantCount = tanks.filter(t => t.status === "VACANT" && t.active).length;
-      const currentMonthStr = new Date().toISOString().substring(0, 7);
-      const monthlyCompleted = sessions.filter(s => s.status === "COMPLETED" && s.emptyingDate && s.emptyingDate.startsWith(currentMonthStr)).length;
-
-      document.getElementById("kpiOccupied").innerText = occupiedCount;
-      document.getElementById("kpiVacant").innerText = vacantCount;
-      document.getElementById("kpiMonthlyCompleted").innerText = monthlyCompleted;
-      document.getElementById("kpiPendingSyncs").innerText = syncQueue.length;
-
-      const grid = document.getElementById("tankGrid");
-      grid.innerHTML = "";
-
-      let activeTanks = tanks.filter(t => t.active);
-      if (activeTanks.length > 9) {
-        grid.classList.remove("grid-standard");
-        grid.classList.add("grid-9-row");
-      } else {
-        grid.classList.remove("grid-9-row");
-        grid.classList.add("grid-standard");
-      }
-
-      let filteredTanks = tanks;
-      if (currentFilterStatus === "OCCUPIED") {
-        filteredTanks = tanks.filter(t => t.status === "OCCUPIED" || t.status === "READY_TO_EMPTY");
-      } else if (currentFilterStatus === "VACANT") {
-        filteredTanks = tanks.filter(t => t.status === "VACANT" && t.active);
-      }
-
-      for (const tank of filteredTanks) {
-        if (!tank.active) continue;
-        let activeSession = sessions.find(s => s.tankId === tank.tankId && s.status !== "COMPLETED");
-        
-        let statusBadgeClass = tank.status === "VACANT" ? "badge-vacant" : "badge-occupied";
-        let displayStatus = tank.status === "VACANT" ? "VACANT" : "OCCUPIED";
-        
-        let daysLeftText = "N/A";
-        let percent = 0;
-        let customerInfo = "Vacant", invoiceInfo = "—";
-
-        if (activeSession) {
-          customerInfo = activeSession.customerName;
-          invoiceInfo = activeSession.invoiceNumber;
-          const loadDate = new Date(activeSession.loadingDate);
-          const expDate = new Date(activeSession.expectedCompletionDate);
-          const now = new Date();
-          const totalDuration = expDate.getTime() - loadDate.getTime();
-          const elapsed = now.getTime() - loadDate.getTime();
-          percent = Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)));
-          const diffDays = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
-          
-          if (diffDays < 0) {
-            displayStatus = "OVERDUE";
-            statusBadgeClass = "badge-overdue";
-            daysLeftText = Math.abs(diffDays) + " Days Overdue";
-          } else {
-            displayStatus = "OCCUPIED";
-            statusBadgeClass = "badge-occupied";
-            daysLeftText = diffDays + " Days Left";
-          }
-          if (tank.status === "READY_TO_EMPTY") { 
-            displayStatus = "READY TO EMPTY"; 
-            statusBadgeClass = "badge-ready"; 
-          }
-        }
-
-        const card = document.createElement("div");
-        card.className = "tank-card";
-        card.innerHTML = `
-          <div class="tank-header"><div class="tank-title">${tank.tankName}</div><span class="badge ${statusBadgeClass}">${displayStatus}</span></div>
-          <div class="tank-body">
-            <div class="tank-field"><div class="tank-field-label">Invoice</div><div class="tank-field-value">${invoiceInfo}</div></div>
-            <div class="tank-field"><div class="tank-field-label">Customer</div><div class="tank-field-value">${customerInfo}</div></div>
-            ${activeSession ? `<div class="tank-field"><div class="tank-field-label">Days Left</div><div class="tank-field-value">${daysLeftText}</div></div>` : ''}
-            ${activeSession ? `<div class="progress-bar-container"><div class="progress-bar-fill ${displayStatus === 'OVERDUE' ? 'overdue' : ''}" style="width:${percent}%;"></div></div>` : ''}
+        <form id="loginForm">
+          <div class="field">
+            <label for="loginUsername">Username</label>
+            <input class="input" id="loginUsername" name="username" autocomplete="username" placeholder="Enter username" required>
           </div>
-        `;
-        grid.appendChild(card);
+          <div class="field">
+            <label for="loginPassword">Password</label>
+            <input class="input" id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+          </div>
+          <button class="button full" type="submit" id="loginButton">Sign in</button>
+          <p class="error-note" id="loginError" role="alert"></p>
+        </form>
+        <form id="bootstrapForm" hidden>
+          <div class="subtle-box" style="margin-bottom:16px">
+            First-time setup is ready. Run <b>setup()</b> in Apps Script and use its one-time setup code here to create the first administrator.
+          </div>
+          <div class="field"><label for="bootstrapCode">One-time setup code</label><input class="input" id="bootstrapCode" autocomplete="one-time-code" required></div>
+          <div class="field"><label for="bootstrapUsername">Administrator username</label><input class="input" id="bootstrapUsername" autocomplete="username" required minlength="3"></div>
+          <div class="field"><label for="bootstrapPassword">Administrator password</label><input class="input" id="bootstrapPassword" type="password" autocomplete="new-password" required minlength="10"></div>
+          <button class="button full" type="submit" id="bootstrapButton">Create administrator</button>
+          <p class="error-note" id="bootstrapError" role="alert"></p>
+        </form>
+        <p class="quiet" style="margin:15px 0 0;text-align:center">Need access? Ask an administrator to create your account.</p>
+      </div>
+    </div>
+
+    <div id="appShell" class="app-shell" hidden>
+      <div id="mobileBackdrop" class="mobile-backdrop"></div>
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark" aria-hidden="true">EM</div>
+          <div><strong><?= appName ?></strong><small>Operations workspace</small></div>
+        </div>
+        <div id="navigation"></div>
+        <div class="sidebar-spacer"></div>
+        <div class="profile-mini">
+          <div id="userAvatar" class="avatar">EM</div>
+          <div><strong id="userName"></strong><small id="userRole"></small></div>
+          <button class="logout-link" type="button" data-action="logout">Sign out</button>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <button class="menu-toggle" type="button" aria-label="Open navigation" data-action="menu">☰</button>
+          <div class="page-title"><h1 id="topTitle">Dashboard</h1><p id="topSubtitle">Live tank and boiler status</p></div>
+          <div class="topbar-spacer"></div>
+          <div class="live-indicator"><span class="live-dot"></span><span id="lastUpdated">Live updates every 5 seconds</span></div>
+          <button class="refresh-button" type="button" title="Refresh this page now" aria-label="Refresh this page now" data-action="refresh">↻</button>
+        </header>
+        <section id="view" class="content" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <div id="modalLayer" class="modal-backdrop" hidden>
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <header class="modal-head"><h2 id="modalTitle"></h2><button class="modal-close" type="button" aria-label="Close dialog" data-action="closeModal">×</button></header>
+        <div class="modal-body" id="modalBody"></div>
+        <footer class="modal-footer" id="modalFooter"></footer>
+      </section>
+    </div>
+    <div id="toastStack" class="toast-stack" aria-live="polite"></div>
+
+    <script>
+      const WEB_APP_URL = <?!= JSON.stringify(webAppUrl) ?>;
+      const APP_NAME = <?!= JSON.stringify(appName) ?>;
+      const CURRENCY = <?!= JSON.stringify(currency) ?>;
+      document.getElementById("app-manifest").href = WEB_APP_URL + "?asset=manifest";
+
+      const state = {
+        token: "", user: null, section: "dashboard", data: null, timer: null, inFlight: false, refreshing: false,
+        queue: [], loadDraft: null, reportFilters: null, modalOpen: false, seenPending: new Set(),
+        installPrompt: null, reportBusy: false, customerFilter: ""
+      };
+      window.addEventListener("beforeinstallprompt",event => {
+        event.preventDefault();
+        state.installPrompt = event;
+      });
+      const PAGE_META = {
+        dashboard: ["Dashboard", "Live tank and boiler status"],
+        loadTank: ["Load tanks", "Start a tank session"],
+        loadBoiler: ["Load boilers", "Start a boiler session"],
+        emptyTank: ["Empty tanks", "Open tank sessions and record payments"],
+        emptyBoiler: ["Empty boilers", "Open boiler sessions and record payments"],
+        openSessions: ["Open sessions", "Current customer sessions"],
+        approvals: ["Pending verification", "Review price changes before a session opens"],
+        reports: ["Reports", "Account performance for a selected date range"],
+        accounts: ["Administration", "Accounts, default charges and costs"],
+        driver: ["Grabber account", "Record trips, daily costs and performance"]
+      };
+      const ROLE_NAV = {
+        admin: [
+          ["dashboard","Dashboard","⌂"],["loadTank","Load tanks","＋"],["emptyTank","Empty tanks","▣"],
+          ["loadBoiler","Load boilers","＋"],["emptyBoiler","Empty boilers","▣"],["approvals","Pending verification","✓"],
+          ["reports","Reports","▤"],["accounts","Administration","⚙"]
+        ],
+        loader: [["dashboard","Dashboard","⌂"],["loadTank","Load tanks","＋"],["emptyTank","Empty tanks","▣"],["reports","Reports","▤"]],
+        boiler: [["dashboard","Dashboard","⌂"],["loadBoiler","Load boilers","＋"],["emptyBoiler","Empty boilers","▣"],["reports","Reports","▤"]],
+        driver: [["dashboard","Dashboard","⌂"],["driver","Grabber account","▤"]]
+      };
+
+      function esc(value) {
+        return String(value === null || value === undefined ? "" : value)
+          .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+          .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
       }
-    }
+      function money(value) {
+        return CURRENCY + " " + (Number(value) || 0).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+      }
+      function dateShort(value) {
+        if (!value) return "—";
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? String(value).slice(0,10) : d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"});
+      }
+      function monthStart() {
+        const d = new Date();
+        return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-01";
+      }
+      function today() {
+        const d = new Date();
+        return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+      }
+      function statusPill(status) {
+        const clean = String(status || "vacant").toLowerCase();
+        return '<span class="status-pill status-' + esc(clean.replace(/ /g,"-")) + '">' + esc(clean.replace(/_/g," ")) + '</span>';
+      }
 
-    // ------------------------------------------------------------------------
-    // LOAD TANK WORKSPACE
-    // ------------------------------------------------------------------------
-    async function prepareLoadWorkspace() {
-      const tanks = await idbGetAll("tanks");
-      const customers = await idbGetAll("customers");
-      const expenses = await idbGetAll("expenses");
-
-      const dl = document.getElementById("customerSuggestions");
-      dl.innerHTML = "";
-      customers.forEach(c => { const o = document.createElement("option"); o.value = c.name; dl.appendChild(o); });
-
-      const selectorGrid = document.getElementById("loadTankSelector");
-      selectorGrid.innerHTML = "";
-      const vacantTanks = tanks.filter(t => t.status === "VACANT" && t.active);
-      if (vacantTanks.length === 0) {
-        selectorGrid.innerHTML = `<div style="grid-column:1/-1; color:var(--text-muted);">No vacant tanks available.</div>`;
-      } else {
-        vacantTanks.forEach(t => {
-          const div = document.createElement("div");
-          div.className = "selectable-tank" + (stagedLoadingData.tanks[t.tankId] ? " selected" : "");
-          div.innerText = t.tankName;
-          div.onclick = () => toggleSelectTankForLoad(t.tankId, t.tankName);
-          selectorGrid.appendChild(div);
+      function enqueue(name, args) {
+        return new Promise((resolve, reject) => {
+          state.queue.push({name,args,resolve,reject});
+          drainQueue();
         });
       }
-
-      const expSelect = document.getElementById("expensePredefinedSelect");
-      expSelect.innerHTML = `<option value="">-- Select Predefined Expense --</option>`;
-      expenses.filter(e => e.active).forEach(e => {
-        expSelect.innerHTML += `<option value="${e.expenseId}">${e.name} ($${e.defaultSelling})</option>`;
-      });
-      renderStagingSummary();
-    }
-
-    function toggleSelectTankForLoad(tankId, tankName) {
-      if (stagedLoadingData.tanks[tankId]) {
-        delete stagedLoadingData.tanks[tankId];
-        if (activeSelectedTankIdForExpenses === tankId) activeSelectedTankIdForExpenses = null;
-      } else {
-        stagedLoadingData.tanks[tankId] = { tankName, expenses: [] };
-        if (!activeSelectedTankIdForExpenses) activeSelectedTankIdForExpenses = tankId;
-      }
-      prepareLoadWorkspace();
-      renderActiveTankExpenses();
-    }
-
-    async function onPredefinedExpenseSelect() {
-      const expId = document.getElementById("expensePredefinedSelect").value;
-      if (!expId) return;
-      const expense = await idbGet("expenses", expId);
-      if (expense) {
-        document.getElementById("expCostPrice").value = expense.defaultCost;
-        document.getElementById("expSellingPrice").value = expense.defaultSelling;
-      }
-    }
-
-    function getExpenseFromForm() {
-      const expSelect = document.getElementById("expensePredefinedSelect");
-      const expId = expSelect.value;
-      const expName = expSelect.options[expSelect.selectedIndex]?.text.split(" ($")[0] || "Custom Expense";
-      const qty = parseFloat(document.getElementById("expQty").value) || 1;
-      const cost = parseFloat(document.getElementById("expCostPrice").value) || 0;
-      const selling = parseFloat(document.getElementById("expSellingPrice").value) || 0;
-      if (!expId) { alert("Select an expense item."); return null; }
-      return {
-        sessionExpenseId: "SE-" + Math.random().toString(36).substring(2, 9),
-        expenseId: expId,
-        expenseName: expName,
-        quantity: qty,
-        costPrice: cost,
-        sellingPrice: selling,
-        totalCost: qty * cost,
-        totalSelling: qty * selling,
-        profit: (qty * selling) - (qty * cost)
-      };
-    }
-
-    function addExpenseToCurrentTank() {
-      if (!activeSelectedTankIdForExpenses) { alert("Please select a tank first."); return; }
-      const item = getExpenseFromForm();
-      if (!item) return;
-      stagedLoadingData.tanks[activeSelectedTankIdForExpenses].expenses.push(item);
-      renderActiveTankExpenses();
-      renderStagingSummary();
-    }
-
-    function addExpenseToAllTanks() {
-      const item = getExpenseFromForm();
-      if (!item) return;
-      const tankIds = Object.keys(stagedLoadingData.tanks);
-      if (tankIds.length === 0) { alert("No tanks selected."); return; }
-      for (const tankId of tankIds) {
-        stagedLoadingData.tanks[tankId].expenses.push({ ...item, sessionExpenseId: "SE-" + Math.random().toString(36).substring(2, 9) });
-      }
-      renderActiveTankExpenses();
-      renderStagingSummary();
-    }
-
-    function renderActiveTankExpenses() {
-      const expCard = document.getElementById("loadExpenseCard");
-      if (!activeSelectedTankIdForExpenses || !stagedLoadingData.tanks[activeSelectedTankIdForExpenses]) {
-        expCard.style.display = "none";
-        return;
-      }
-      expCard.style.display = "block";
-      const tankObj = stagedLoadingData.tanks[activeSelectedTankIdForExpenses];
-      document.getElementById("selectedTankHeader").innerText = `Assign Expenses for ${tankObj.tankName}`;
-      const tbody = document.getElementById("tankExpenseTableBody");
-      tbody.innerHTML = "";
-      let totC = 0, totS = 0;
-      tankObj.expenses.forEach((item, idx) => {
-        totC += item.totalCost;
-        totS += item.totalSelling;
-        tbody.innerHTML += `<tr><td>${item.expenseName}</td><td>${item.quantity}</td><td>$${item.totalCost.toFixed(2)}</td><td>$${item.totalSelling.toFixed(2)}</td><td>$${item.profit.toFixed(2)}</td><td><button class="btn btn-danger" style="padding:2px 6px; font-size:0.7rem; width:auto;" onclick="removeExpenseFromTank('${activeSelectedTankIdForExpenses}', ${idx})">Remove</button></td></tr>`;
-      });
-      document.getElementById("tankFinancialsSummary").innerText = `Total Cost: $${totC.toFixed(2)} | Total Selling: $${totS.toFixed(2)} | Expected Profit: $${(totS - totC).toFixed(2)}`;
-    }
-
-    function removeExpenseFromTank(tankId, index) {
-      stagedLoadingData.tanks[tankId].expenses.splice(index, 1);
-      renderActiveTankExpenses();
-      renderStagingSummary();
-    }
-
-    function renderStagingSummary() {
-      const summaryCard = document.getElementById("loadStagingSummaryCard");
-      const stagedList = document.getElementById("stagedTanksList");
-      const tankIds = Object.keys(stagedLoadingData.tanks);
-      if (tankIds.length === 0) { summaryCard.style.display = "none"; return; }
-      summaryCard.style.display = "block";
-      stagedList.innerHTML = "";
-      tankIds.forEach(tid => {
-        const t = stagedLoadingData.tanks[tid];
-        const tSelling = t.expenses.reduce((sum, e) => sum + e.totalSelling, 0);
-        stagedList.innerHTML += `<div style="padding:6px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; font-size:0.85rem;"><span><strong>${t.tankName}</strong> (${t.expenses.length} Expenses)</span><span>Total: <strong>$${tSelling.toFixed(2)}</strong></span></div>`;
-      });
-    }
-
-    function resetLoadForm() {
-      stagedLoadingData = { invoiceNumber: "", customerName: "", customerPhone: "", tanks: {} };
-      activeSelectedTankIdForExpenses = null;
-      document.getElementById("loadInvoiceNum").value = "";
-      document.getElementById("loadCustomerName").value = "";
-      document.getElementById("loadCustomerPhone").value = "";
-      prepareLoadWorkspace();
-      renderActiveTankExpenses();
-    }
-
-    async function executeCompleteLoading() {
-      const invNum = document.getElementById("loadInvoiceNum").value.trim();
-      const custName = document.getElementById("loadCustomerName").value.trim();
-      const custPhone = document.getElementById("loadCustomerPhone").value.trim();
-      if (!invNum) return alert("Invoice Number is required.");
-      if (!custName) return alert("Customer Name is required.");
-      if (Object.keys(stagedLoadingData.tanks).length === 0) return alert("Select at least one vacant tank.");
-      if (!currentUser) return alert("You must be logged in.");
-
-      const writeId = "WID-" + Date.now() + "-" + Math.random().toString(36).substring(2, 7);
-      const nowIso = new Date().toISOString();
-      const expCompletionDate = new Date(Date.now() + DEFAULT_SESSION_DAYS * 24 * 3600 * 1000).toISOString();
-
-      const customerId = "CUST-" + custName.replace(/\s+/g, "_").toUpperCase();
-      await idbPut("customers", { customerId, name: custName, phone: custPhone, createdAt: nowIso });
-      const invoiceId = "INV-" + invNum;
-      await idbPut("invoices", { invoiceId, invoiceNumber: invNum, customerId, customerName: custName, phone: custPhone, status: "OPEN", createdAt: nowIso });
-
-      const createdSessions = [];
-      const sessionExpenses = [];
-      const tanksToUpdate = [];
-
-      for (const tankId in stagedLoadingData.tanks) {
-        const tankData = stagedLoadingData.tanks[tankId];
-        const sessionId = "SESS-" + invNum + "-" + tankId;
-        const totCost = tankData.expenses.reduce((s, e) => s + e.totalCost, 0);
-        const totSelling = tankData.expenses.reduce((s, e) => s + e.totalSelling, 0);
-        const sessionObj = {
-          sessionId, invoiceId, invoiceNumber: invNum, customerId, customerName: custName,
-          customerPhone: custPhone, tankId, loadingDate: nowIso, expectedCompletionDate: expCompletionDate,
-          emptyingDate: null, status: "OCCUPIED", totalCost: totCost, totalSelling: totSelling,
-          profit: totSelling - totCost, createdAt: nowIso
-        };
-        await idbPut("sessions", sessionObj);
-        createdSessions.push(sessionObj);
-        
-        for (const exp of tankData.expenses) {
-          const se = { ...exp, sessionId, tankId };
-          await idbPut("sessionExpenses", se);
-          sessionExpenses.push(se);
+      function drainQueue() {
+        if (state.inFlight || !state.queue.length) return;
+        state.inFlight = true;
+        const item = state.queue.shift();
+        let runner = google.script.run
+          .withSuccessHandler(result => {
+            state.inFlight = false;
+            if (result && result.ok === false) item.reject(new Error(result.error || "The request failed."));
+            else item.resolve(result);
+            drainQueue();
+          })
+          .withFailureHandler(error => {
+            state.inFlight = false;
+            item.reject(new Error(error && error.message ? error.message : "The server could not complete the request."));
+            drainQueue();
+          });
+        try {
+          if (item.name === "login") runner.login(item.args.username,item.args.password);
+          else if (item.name === "bootstrapAdmin") runner.bootstrapAdmin(item.args.code,item.args.username,item.args.password);
+          else if (item.name === "getSetupStatus") runner.getSetupStatus();
+          else runner.api(state.token,item.name,item.args || {});
+        } catch (error) {
+          state.inFlight = false;
+          item.reject(error);
+          drainQueue();
         }
-        
-        const existingTank = await idbGet("tanks", tankId);
-        if (existingTank) { 
-          existingTank.status = "OCCUPIED"; 
-          existingTank.updatedAt = nowIso; 
-          await idbPut("tanks", existingTank);
-          tanksToUpdate.push(existingTank);
+      }
+      async function rpc(name, payload) {
+        return enqueue(name,payload || {});
+      }
+      function toast(message, type) {
+        const node = document.createElement("div");
+        node.className = "toast " + (type || "");
+        node.textContent = message;
+        document.getElementById("toastStack").appendChild(node);
+        setTimeout(() => node.remove(), 4200);
+      }
+      function setBusy(button, busy, text) {
+        if (!button) return;
+        button.disabled = busy;
+        if (busy) {
+          button.dataset.previousText = button.textContent;
+          button.textContent = text || "Working…";
+        } else if (button.dataset.previousText) {
+          button.textContent = button.dataset.previousText;
+          delete button.dataset.previousText;
         }
       }
 
-      const auditObj = {
-        auditId: "AUD-" + Date.now(),
-        writeId, timestamp: nowIso, action: "TANK_LOADED", entityType: "INVOICE_SESSION",
-        entityId: invoiceId, invoiceNumber: invNum, customer: custName, user: currentUser.username,
-        details: `Loaded ${Object.keys(stagedLoadingData.tanks).length} tanks under Invoice ${invNum}`
-      };
-      await idbPut("auditTrail", auditObj);
-      await idbPut("syncQueue", {
-        writeId, deviceId: DEVICE_ID, timestamp: nowIso,
-        operation: "LOAD_TANK", entityType: "SESSIONS",
-        payload: { 
-          operation: "LOAD_TANK",
-          invoiceNumber: invNum, 
-          customerName: custName, 
-          customerPhone: custPhone, 
-          sessions: createdSessions,
-          sessionExpenses: sessionExpenses,
-          tanks: tanksToUpdate,
-          invoices: [{ invoiceId, invoiceNumber: invNum, customerId, customerName: custName, phone: custPhone, status: "OPEN", createdAt: nowIso }],
-          customers: [{ customerId, name: custName, phone: custPhone, createdAt: nowIso }],
-          audit: auditObj 
+      async function initialize() {
+        try {
+          const savedToken = sessionStorage.getItem("enican-token");
+          if (savedToken) {
+            state.token = savedToken;
+            const response = await rpc("section",{section:"dashboard"});
+            state.user = {username: sessionStorage.getItem("enican-user") || "",role: sessionStorage.getItem("enican-role") || "loader"};
+            enterApp(response.data);
+            return;
+          }
+          const setup = await enqueue("getSetupStatus",{});
+          if (setup && setup.needsAdmin) {
+            document.getElementById("loginForm").hidden = true;
+            document.getElementById("bootstrapForm").hidden = false;
+          }
+        } catch (error) {
+          if (state.token) {
+            clearAuth();
+            try {
+              const setup = await enqueue("getSetupStatus",{});
+              if (setup && setup.needsAdmin) {
+                document.getElementById("loginForm").hidden = true;
+                document.getElementById("bootstrapForm").hidden = false;
+              }
+            } catch (_) {}
+          }
         }
-      });
-
-      alert("Tank session successfully loaded and locked.");
-      resetLoadForm();
-      switchView("viewDashboard");
-      triggerSyncQueueProcess();
-      fetchLiveData();
-    }
-
-    // ------------------------------------------------------------------------
-    // EMPTY TANK WORKSPACE (RELIABLE MATCHING FIX)
-    // ------------------------------------------------------------------------
-    async function renderEmptyWorkspace() {
-      const sessions = await idbGetAll("sessions");
-      const tanks = await idbGetAll("tanks");
-      const container = document.getElementById("emptySessionGroupList");
-      container.innerHTML = "";
-
-      const activeSessions = sessions.filter(s => s.status !== "COMPLETED");
-      if (activeSessions.length === 0) {
-        container.innerHTML = `<div class="workspace-card">No active sessions available to empty.</div>`;
-        return;
+      }
+      function clearAuth() {
+        sessionStorage.removeItem("enican-token");
+        sessionStorage.removeItem("enican-user");
+        sessionStorage.removeItem("enican-role");
+        state.token = "";
+        state.user = null;
+      }
+      function enterApp(initialData) {
+        document.getElementById("loginScreen").hidden = true;
+        document.getElementById("appShell").hidden = false;
+        document.getElementById("userName").textContent = state.user.username;
+        document.getElementById("userRole").textContent = state.user.role;
+        document.getElementById("userAvatar").textContent = state.user.username.slice(0,2).toUpperCase();
+        renderNavigation();
+        state.section = "dashboard";
+        state.data = initialData || null;
+        renderPage();
+        refreshPage();
+        if (state.timer) clearInterval(state.timer);
+        state.timer = setInterval(() => refreshPage(true),5000);
+        registerServiceWorker();
+        maybeAskToInstall();
+      }
+      function renderNavigation() {
+        const nav = ROLE_NAV[state.user.role] || ROLE_NAV.loader;
+        const adminCount = state.data && state.data.adminPending ? state.data.adminPending.length : 0;
+        document.getElementById("navigation").innerHTML =
+          '<div class="nav-label">Workspace</div><nav class="nav-list">' +
+          nav.map(item => '<button class="nav-item ' + (state.section === item[0] ? "active" : "") +
+            '" type="button" data-action="navigate" data-section="' + item[0] + '">' +
+            '<span class="nav-icon" aria-hidden="true">' + item[2] + '</span><span>' + esc(item[1]) + '</span>' +
+            (item[0] === "approvals" && adminCount ? '<span class="nav-count">' + adminCount + '</span>' : "") +
+            '</button>').join("") + '</nav>';
+      }
+      async function changeSection(section) {
+        if (!PAGE_META[section]) return;
+        state.section = section;
+        if (section === "loadTank" || section === "loadBoiler") state.loadDraft = null;
+        if (section === "reports" || section === "driver") {
+          state.reportFilters = state.reportFilters || {from:monthStart(),to:today(),account:""};
+        }
+        closeSidebar();
+        renderNavigation();
+        document.getElementById("view").innerHTML = '<div class="empty-state"><strong>Loading this section…</strong>Fetching only the data this page needs.</div>';
+        await refreshPage();
+      }
+      async function refreshPage(isAuto) {
+        if (!state.user || !state.token) return;
+        if (isAuto && state.refreshing) return;
+        state.refreshing = true;
+        const requestedSection = state.section;
+        const button = document.querySelector('[data-action="refresh"]');
+        if (button && !isAuto) button.classList.add("spinning");
+        try {
+          const filters = Object.assign({},state.reportFilters || {});
+          if (state.section === "customerSessions") filters.customerId = state.customerFilter;
+          const result = await rpc("section",{section:requestedSection,filters});
+          if (requestedSection !== state.section) return;
+          state.data = result.data;
+          const now = new Date().toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit",second:"2-digit"});
+          document.getElementById("lastUpdated").textContent = "Updated " + now + " · auto every 5 sec";
+          renderPage();
+          checkPending(result.data.adminPending || []);
+        } catch (error) {
+          if (/session has expired|sign in again/i.test(error.message)) {
+            if (state.timer) clearInterval(state.timer);
+            clearAuth();
+            document.getElementById("appShell").hidden = true;
+            document.getElementById("loginScreen").hidden = false;
+            toast("Your session expired. Sign in again.","error");
+          } else if (!isAuto) toast(error.message,"error");
+        } finally {
+          state.refreshing = false;
+          if (button) button.classList.remove("spinning");
+        }
+      }
+      function renderPage() {
+        const meta = PAGE_META[state.section] || PAGE_META.dashboard;
+        document.getElementById("topTitle").textContent = meta[0];
+        document.getElementById("topSubtitle").textContent = meta[1];
+        renderNavigation();
+        const data = state.data || {};
+        const view = document.getElementById("view");
+        if (state.section === "dashboard") view.innerHTML = renderDashboard(data);
+        else if (state.section === "loadTank" || state.section === "loadBoiler") view.innerHTML = renderLoading(data);
+        else if (state.section === "emptyTank" || state.section === "emptyBoiler" || state.section === "openSessions" || state.section === "customerSessions") view.innerHTML = renderOpenSessions(data);
+        else if (state.section === "approvals") view.innerHTML = renderApprovals(data);
+        else if (state.section === "reports") view.innerHTML = renderReports(data.report || {});
+        else if (state.section === "accounts") view.innerHTML = renderAdministration(data);
+        else if (state.section === "driver") view.innerHTML = renderDriver(data);
       }
 
-      const groups = {};
-      activeSessions.forEach(s => {
-        const key = s.invoiceNumber || s.invoiceId;
-        if (!groups[key]) {
-          groups[key] = { 
-            invoiceNumber: key, 
-            customerName: s.customerName, 
-            customerId: s.customerId,
-            invoiceId: s.invoiceId,
-            loadingDate: s.loadingDate, 
-            sessions: [],
-            totalSelling: 0,
-            totalCost: 0
+      function renderDashboard(data) {
+        const summary = data.summary || {};
+        return '<div class="page-head"><div><p class="eyebrow">Live yard</p><h2>Tanks and boilers</h2>' +
+          '<p>Current availability across all units. Status refreshes automatically every five seconds.</p></div>' +
+          (state.user.role === "driver" ? "" : '<div class="toolbar"><button class="button secondary small" data-action="navigate" data-section="openSessions">View open sessions</button></div>') + '</div>' +
+          '<div class="summary-grid">' +
+          summaryCard("Tanks vacant",summary.tanksVacant || 0,"of " + ((data.tanks || []).length) + " tanks") +
+          summaryCard("Tanks occupied",summary.tanksOccupied || 0,"Open customer sessions") +
+          summaryCard("Boilers vacant",summary.boilersVacant || 0,"of " + ((data.boilers || []).length) + " boilers") +
+          summaryCard("Boilers occupied",summary.boilersOccupied || 0,"Open customer sessions") +
+          '</div><div class="section-heading"><h3>Tank availability</h3><span>' + ((data.tanks || []).length) + ' units</span></div>' +
+          renderResources(data.tanks || [],"tanks") +
+          '<div class="section-heading"><h3>Boiler availability</h3><span>' + ((data.boilers || []).length) + ' units</span></div>' +
+          renderResources(data.boilers || [],"boilers");
+      }
+      function summaryCard(label,value,note) {
+        return '<div class="summary-card"><span class="summary-label">' + esc(label) + '</span><strong>' + esc(value) + '</strong><small>' + esc(note) + '</small></div>';
+      }
+      function renderResources(resources,account) {
+        if (!resources.length) return '<div class="empty-state"><strong>No units added</strong>Run setup() to seed the default units.</div>';
+        return '<div class="resource-grid">' + resources.map(r =>
+          '<button class="resource-card" type="button" data-action="resource" data-id="' + esc(r.id) + '" data-account="' + account + '">' +
+          '<span class="resource-card-top"><strong>' + esc(r.name) + '</strong><span class="asset-symbol">' + (account === "tanks" ? "◉" : "▰") + '</span></span>' +
+          '<p>' + statusPill(r.status) + '</p></button>'
+        ).join("") + '</div>';
+      }
+
+      function renderLoading(data) {
+        const account = state.section === "loadTank" ? "tanks" : "boilers";
+        const kind = account === "tanks" ? "tank" : "boiler";
+        if (!state.loadDraft || state.loadDraft.account !== account) {
+          state.loadDraft = {
+            account, step: 1, customerId: "", selected: new Set(), included: new Set((data.expenses || []).map(e => e.id)),
+            overrides: {}, additions: [], search: "", newCustomer: false
           };
         }
-        groups[key].sessions.push(s);
-        groups[key].totalSelling += (s.totalSelling || 0);
-        groups[key].totalCost += (s.totalCost || 0);
-      });
-
-      for (const invNum in groups) {
-        const group = groups[invNum];
-        const tankNames = group.sessions.map(s => {
-          const t = tanks.find(tk => tk.tankId === s.tankId);
-          return t ? t.tankName : s.tankId;
-        }).join(', ');
-
-        const card = document.createElement("div");
-        card.className = "empty-invoice-card";
-        card.id = "emptyCard_" + invNum.replace(/\s+/g, "_");
-        card.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-            <div>
-              <strong style="font-size:1rem;">${group.customerName}</strong>
-              <div style="font-size:0.85rem; color:var(--text-muted);">Invoice: ${group.invoiceNumber}</div>
-              <div style="font-size:0.8rem; color:var(--text-muted);">Tanks: ${tankNames}</div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-weight:700; color:var(--primary);">$${group.totalSelling.toFixed(2)}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">${group.sessions.length} tank(s)</div>
-            </div>
-          </div>
-          <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-            <div class="form-group" style="flex:1; min-width:150px; margin-bottom:0;">
-              <input type="number" id="emptyPaymentAmt_${invNum.replace(/\s+/g, "_")}" class="form-input" placeholder="Payment Amount ($)" step="0.01" style="padding:8px;">
-            </div>
-            <div class="form-group" style="flex:1; min-width:150px; margin-bottom:0;">
-              <input type="text" id="emptyPaymentNote_${invNum.replace(/\s+/g, "_")}" class="form-input" placeholder="Reference / Note" style="padding:8px;">
-            </div>
-            <button class="btn btn-success" onclick="executeEmptyAndConfirmPayment('${invNum}')" style="flex:0 0 auto; padding:8px 20px;">
-              CONFIRM PAYMENT & EMPTY
-            </button>
-          </div>
-          <div id="emptyStatus_${invNum.replace(/\s+/g, "_")}" style="margin-top:8px; font-size:0.85rem; display:none;"></div>
-        `;
-        container.appendChild(card);
+        const draft = state.loadDraft;
+        const stepBar = '<div class="steps">' +
+          [1,2,3].map((n,i) => '<div class="step ' + (draft.step === n ? "active" : "") + '"><span class="step-number">' + n +
+            '</span><span class="step-copy">' + ["Customer","Select units","Expenses"][i] + '</span></div>' + (i<2?'<span class="step-line"></span>':"")).join("") + '</div>';
+        let body = "";
+        if (draft.step === 1) {
+          if (draft.newCustomer) {
+            body = '<div class="panel"><div class="panel-head"><h3>Add a customer</h3><button class="button ghost small" data-action="cancelNewCustomer">Back to search</button></div>' +
+              '<div class="panel-body"><form id="customerForm" class="inline-form">' +
+              field("Customer name","name","text","Customer name",true) +
+              field("Phone","phone","tel","Phone number",false) +
+              '<div class="field span-2"><label for="customerAddress">Address</label><textarea class="textarea" id="customerAddress" name="address" placeholder="Customer address"></textarea></div>' +
+              '<div class="span-2"><button class="button" type="submit">Save customer and continue</button></div></form></div></div>';
+          } else {
+            const q = draft.search.trim().toLowerCase();
+            const customers = (data.customers || []).filter(c => !q || [c.name,c.phone,c.address].join(" ").toLowerCase().includes(q));
+            body = '<div class="panel"><div class="panel-head"><h3>Choose a customer</h3><span class="quiet">' + (data.customers || []).length + ' customers</span></div>' +
+              '<div class="panel-body"><div class="field"><label for="customerSearch">Search customers</label><div class="search-control"><svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" stroke-width="2"></circle><path d="m16 16 4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg><input class="input" id="customerSearch" type="search" value="' + esc(draft.search) + '" placeholder="Search name, phone, or address"></div></div>' +
+              '<div class="customer-results">' + customers.slice(0,100).map(c =>
+                '<button type="button" class="customer-result ' + (draft.customerId === c.id ? "selected" : "") + '" data-action="chooseCustomer" data-id="' + esc(c.id) + '">' +
+                '<span class="avatar">' + esc(c.name.slice(0,2).toUpperCase()) + '</span><span><strong>' + esc(c.name) + '</strong><small>' + esc(c.phone || "No phone") + ' · ' + esc(c.address || "No address") + '</small></span>' +
+                (draft.customerId === c.id ? '<span class="button small">Selected</span>' : '') + '</button>'
+              ).join("") + (customers.length ? "" : '<div class="empty-state"><strong>No matching customers</strong>Add this customer to continue.</div>') +
+              '</div><div class="toolbar" style="margin-top:14px"><button class="button secondary" data-action="newCustomer">Add new customer</button>' +
+              '<button class="button" data-action="loadStep" data-step="2" ' + (!draft.customerId ? "disabled" : "") + '>Continue to unit selection</button></div></div></div>';
+          }
+        } else if (draft.step === 2) {
+          const available = data.resources || [];
+          body = '<div class="panel"><div class="panel-head"><h3>Select ' + kind + 's</h3><span class="quiet">' + available.length + ' available</span></div><div class="panel-body">' +
+            (available.length ? '<div class="choice-grid">' + available.map(r =>
+              '<label class="choice-card ' + (draft.selected.has(r.id) ? "selected" : "") + '"><input type="checkbox" data-select-resource="' + esc(r.id) + '" ' + (draft.selected.has(r.id) ? "checked" : "") + '><span class="choice-meta"><strong>' + esc(r.name) + '</strong><small>' + esc(r.id) + ' · vacant</small></span></label>'
+            ).join("") + '</div>' : '<div class="empty-state"><strong>No vacant ' + kind + 's</strong>Refresh the page after a unit is emptied.</div>') +
+            '<div class="toolbar" style="margin-top:16px"><button class="button secondary" data-action="loadStep" data-step="1">Back</button>' +
+            '<button class="button" data-action="loadStep" data-step="3" ' + (!draft.selected.size ? "disabled" : "") + '>Continue to expenses (' + draft.selected.size + ')</button></div></div></div>';
+        } else {
+          const selected = [...draft.selected];
+          const expenses = data.expenses || [];
+          const subtotalPerUnit = expenses.filter(e => draft.included.has(e.id)).reduce((s,e) => s + Number(draft.overrides[e.id] ?? e.amount),0) +
+            draft.additions.reduce((s,e) => s + Number(e.amount || 0),0);
+          body = '<div class="panel"><div class="panel-head"><h3>Invoice expenses</h3><span class="quiet">' + selected.length + ' selected ' + kind + (selected.length === 1 ? "" : "s") + '</span></div><div class="panel-body">' +
+            '<div class="subtle-box" style="margin-bottom:14px">Default charges are copied to every selected unit. Removing a charge removes it from all selected units. New charges and changed prices need administrator approval.</div>' +
+            (expenses.length ? '<div>' + expenses.map(e => '<div class="expense-row">' +
+              '<input type="checkbox" data-select-expense="' + esc(e.id) + '" ' + (draft.included.has(e.id) ? "checked" : "") + ' aria-label="Include ' + esc(e.name) + '">' +
+              '<span><strong>' + esc(e.name) + '</strong><small>' + esc(e.description || "Default charge for " + account) + '</small></span>' +
+              '<input class="input expense-price" type="number" min="0" step="0.01" data-expense-price="' + esc(e.id) + '" value="' + esc(draft.overrides[e.id] ?? e.amount) + '" aria-label="' + esc(e.name) + ' price">' +
+              '<span class="per-unit">each · ' + money(draft.included.has(e.id) ? (draft.overrides[e.id] ?? e.amount) * selected.length : 0) + ' total</span></div>').join("") + '</div>' :
+              '<div class="warning-box">No default charges are configured for ' + account + '. Add them in Administration before creating standard invoices, or add a charge below.</div>') +
+            '<div class="section-heading"><h3>Additional charge</h3><span>Applied to every selected unit</span></div><div id="additionalExpenses">' +
+            draft.additions.map((e,i) => '<div class="expense-row"><span class="status-pill status-open">New</span><span><strong>' + esc(e.description || "New expense") + '</strong><small>Added by ' + esc(state.user.username) + '</small></span>' +
+              '<input class="input expense-price" type="number" min="0" step="0.01" data-add-price="' + i + '" value="' + esc(e.amount) + '" aria-label="Additional expense price">' +
+              '<button class="button ghost small" data-action="removeAdditional" data-index="' + i + '">Remove</button></div>').join("") +
+            '</div><button class="button secondary small" data-action="addAdditional">Add expense</button>' +
+            '<div class="detail-grid" style="margin-top:18px"><div class="detail-cell"><span>Per ' + kind + '</span><strong>' + money(subtotalPerUnit) + '</strong></div><div class="detail-cell"><span>Total invoice</span><strong>' + money(subtotalPerUnit * selected.length) + '</strong></div></div>' +
+            '<div class="field"><label for="loadNotes">Invoice notes (optional)</label><textarea class="textarea" id="loadNotes" placeholder="Add an optional note"></textarea></div>' +
+            '<div class="toolbar"><button class="button secondary" data-action="loadStep" data-step="2">Back</button>' +
+            '<button class="button" data-action="submitLoad" ' + (!(subtotalPerUnit * selected.length > 0) ? "disabled" : "") + '>Create invoice and open ' + kind + (selected.length === 1 ? "" : "s") + '</button></div></div></div>';
+        }
+        return '<div class="page-head"><div><p class="eyebrow">' + (account === "tanks" ? "Tank account" : "Boiler account") + '</p><h2>Load ' + kind + 's</h2>' +
+          '<p>Choose the customer and units, then confirm the expenses that apply to each one.</p></div></div>' + stepBar + body;
       }
-    }
+      function field(label,name,type,placeholder,required) {
+        return '<div class="field"><label for="f-' + name + '">' + esc(label) + '</label><input class="input" id="f-' + name + '" name="' + name + '" type="' + type + '" placeholder="' + esc(placeholder) + '" ' + (required ? "required" : "") + '></div>';
+      }
 
-    async function executeEmptyAndConfirmPayment(invNum) {
-      if (!currentUser) return alert("You must be logged in.");
+      function renderOpenSessions(data) {
+        const sessions = data.sessions || [];
+        const title = state.section === "emptyTank" ? "Open tank sessions" : state.section === "emptyBoiler" ? "Open boiler sessions" :
+          state.section === "customerSessions" ? "Customer open sessions" : "Open sessions";
+        return '<div class="page-head"><div><p class="eyebrow">Operations</p><h2>' + title + '</h2><p>Select an invoice to review charges, due date and remaining balance.</p></div>' +
+          (state.section === "customerSessions" ? '<div class="toolbar"><button class="button secondary small" data-action="navigate" data-section="dashboard">Back to dashboard</button></div>' : '') + '</div>' +
+          (sessions.length ? '<div class="panel"><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Units</th><th>Due</th><th>Balance</th><th></th></tr></thead><tbody>' +
+            sessions.map(s => '<tr><td><strong>' + esc(s.invoiceNumber) + '</strong><br><small class="quiet">' + esc(s.account) + '</small></td><td>' + esc(s.customerName) +
+              '</td><td>' + esc(s.resourceIds.join(", ")) + '</td><td>' + dateShort(s.dueAt) + (s.daysLeft !== null ? '<br><small class="quiet">' + (s.daysLeft < 0 ? Math.abs(s.daysLeft) + ' days overdue' : s.daysLeft + ' days left') + '</small>' : '') +
+              '</td><td><strong>' + money(s.balance) + '</strong></td><td><button class="table-action" data-action="session" data-id="' + esc(s.sessionId) + '">View invoice</button></td></tr>').join("") +
+            '</tbody></table></div></div>' :
+            '<div class="panel empty-state"><strong>No open sessions</strong>When a unit is loaded, its customer invoice will appear here.</div>');
+      }
 
-      const sanitizedKey = invNum.replace(/\s+/g, "_");
-      const inputAmt = parseFloat(document.getElementById(`emptyPaymentAmt_${sanitizedKey}`).value);
-      if (isNaN(inputAmt) || inputAmt <= 0) return alert("Valid Payment Amount is required.");
+      function renderApprovals(data) {
+        const list = data.pendingApprovals || [];
+        return '<div class="page-head"><div><p class="eyebrow">Administrator review</p><h2>Pending verification</h2><p>Price changes are held here before units become occupied. Declined invoices release their units.</p></div></div>' +
+          (list.length ? '<div class="panel"><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Units</th><th>Loader</th><th>Changes</th><th>Total</th><th></th></tr></thead><tbody>' +
+            list.map(a => '<tr><td><strong>' + esc(a.invoiceNumber) + '</strong><br><small class="quiet">' + esc(a.account) + '</small></td><td>' + esc(a.customerName) +
+              '</td><td>' + esc(a.resourceIds.join(", ")) + '</td><td>' + esc(a.createdBy) + '</td><td>' + a.changes.length + '</td><td>' + money(a.total) +
+              '</td><td><button class="table-action" data-action="reviewApproval" data-id="' + esc(a.sessionId) + '">Review</button></td></tr>').join("") +
+            '</tbody></table></div></div>' :
+            '<div class="panel empty-state"><strong>All caught up</strong>No invoices are waiting for price verification.</div>');
+      }
 
-      const note = document.getElementById(`emptyPaymentNote_${sanitizedKey}`).value || "Cash payment";
-      const statusEl = document.getElementById(`emptyStatus_${sanitizedKey}`);
-      
-      statusEl.style.display = "block";
-      statusEl.style.color = "var(--text-muted)";
-      statusEl.textContent = "⏳ Processing...";
+      function renderReports(report) {
+        const totals = report.totals || {};
+        const isAdmin = state.user.role === "admin";
+        const keys = Object.keys(totals);
+        const selected = report.selectedAccount || "";
+        const tiles = keys.map(key => {
+          const label = key === "tanks" ? "Tanks account" : key === "boilers" ? "Boiler account" : "Grabber account";
+          const item = totals[key];
+          return '<button class="account-card ' + (selected === key ? "selected" : "") + '" data-action="reportAccount" data-account="' + key + '">' +
+            '<span class="account-label">' + label + '</span><strong>' + money(item.profit) + '</strong><small>Profit · ' + money(item.revenue) + ' revenue · ' + money(item.expenses) + ' expenses</small></button>';
+        }).join("");
+        const accountTitle = selected ? selected.charAt(0).toUpperCase() + selected.slice(1) + " account detail" : "Select an account";
+        const invoices = report.invoices || [];
+        const trips = report.trips || [];
+        const expenses = report.expenses || [];
+        const detail = !selected ? '<div class="panel empty-state"><strong>Account breakdown</strong>Select an account above to load its completed invoices, trips and expense entries.</div>' :
+          '<div class="two-column"><div class="panel"><div class="panel-head"><h3>' + accountTitle + '</h3><span class="quiet">' + (selected === "grabber" ? trips.length + " trips" : invoices.length + " invoices") + '</span></div>' +
+          (selected === "grabber" ? renderTripTable(trips) : renderInvoiceTable(invoices)) + '</div>' +
+          '<div class="panel"><div class="panel-head"><h3>Recorded expenses</h3><span class="quiet">' + expenses.length + ' entries</span></div>' + renderExpenseTable(expenses) + '</div></div>';
+        return '<div class="page-head"><div><p class="eyebrow">' + (isAdmin ? "Management reports" : "Account report") + '</p><h2>' + (isAdmin ? "Accounts overview" : "Performance") + '</h2>' +
+          '<p>Calculated on the server for the selected period. Detailed rows are fetched only for the selected account.</p></div></div>' +
+          '<form id="reportFilterForm" class="date-filters" style="margin-bottom:16px">' +
+          '<div class="field"><label for="reportFrom">From</label><input class="input" id="reportFrom" name="from" type="date" value="' + esc(report.from || monthStart()) + '"></div>' +
+          '<div class="field"><label for="reportTo">To</label><input class="input" id="reportTo" name="to" type="date" value="' + esc(report.to || today()) + '"></div>' +
+          (isAdmin ? '<div class="field"><label for="reportAccount">Account details</label><select class="select" id="reportAccount" name="account"><option value="">Choose an account</option>' +
+            ["tanks","boilers","grabber"].map(a => '<option value="' + a + '" ' + (selected === a ? "selected" : "") + '>' + (a === "tanks" ? "Tanks Account" : a === "boilers" ? "Boiler Account" : "Grabber Account") + '</option>').join("") + '</select></div>' : '') +
+          '<button class="button small" type="submit">Apply period</button></form>' +
+          (isAdmin ? '<div class="summary-grid">' + summaryCard("Total revenue",money(report.overall && report.overall.revenue),"Across all accounts") +
+            summaryCard("Total expenses",money(report.overall && report.overall.expenses),"Recorded operating costs") +
+            summaryCard("Total profit",money(report.overall && report.overall.profit),"Revenue less recorded costs") + '</div>' : '') +
+          '<div class="account-cards">' + tiles + '</div>' + detail;
+      }
+      function renderInvoiceTable(invoices) {
+        if (!invoices.length) return '<div class="empty-state"><strong>No completed invoices in this period</strong>Try a wider date range.</div>';
+        return '<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Units</th><th>Completed</th><th>Total</th><th></th></tr></thead><tbody>' +
+          invoices.map(s => '<tr><td>' + esc(s.invoiceNumber) + '</td><td>' + esc(s.customerName) + '</td><td>' + esc(s.resourceIds.join(", ")) +
+            '</td><td>' + dateShort(s.completedAt) + '</td><td>' + money(s.total) + '</td><td><button class="table-action" data-action="session" data-id="' + esc(s.sessionId) + '">Open</button></td></tr>').join("") +
+          '</tbody></table></div>';
+      }
+      function renderTripTable(trips) {
+        if (!trips.length) return '<div class="empty-state"><strong>No trips in this period</strong>Trip entries will appear here after drivers record them.</div>';
+        return '<div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Trips</th><th>Revenue</th><th>Driver</th></tr></thead><tbody>' +
+          trips.map(t => '<tr><td>' + dateShort(t.date) + '</td><td>' + esc(t.customerName) + '</td><td>' + esc(t.trips) + '</td><td>' + money(t.revenue) + '</td><td>' + esc(t.by) + '</td></tr>').join("") +
+          '</tbody></table></div>';
+      }
+      function renderExpenseTable(expenses) {
+        if (!expenses.length) return '<div class="empty-state"><strong>No operating expenses recorded</strong>Recorded costs will appear here.</div>';
+        return '<div class="table-wrap"><table style="min-width:310px"><thead><tr><th>Date / description</th><th>Added by</th><th>Amount</th></tr></thead><tbody>' +
+          expenses.map(e => '<tr><td>' + dateShort(e.date) + '<br><small class="quiet">' + esc(e.description) + '</small></td><td>' + esc(e.by) + '</td><td>' + money(e.amount) + '</td></tr>').join("") +
+          '</tbody></table></div>';
+      }
 
-      try {
-        const sessions = await idbGetAll("sessions");
-        const groupSessions = sessions.filter(s => 
-          (s.invoiceNumber === invNum || s.invoiceId === invNum) && s.status !== "COMPLETED"
-        );
+      function renderDriver(data) {
+        const report = data.report || {};
+        const grabber = (report.totals || {}).grabber || {revenue:0,expenses:0,profit:0};
+        return '<div class="page-head"><div><p class="eyebrow">Grabber account</p><h2>Trips and daily costs</h2><p>Record each trip and expense. Revenue, expenses and net are calculated for the selected period.</p></div></div>' +
+          '<div class="summary-grid">' + summaryCard("Revenue",money(grabber.revenue),"Your trips in this period") +
+          summaryCard("Expenses",money(grabber.expenses),"Your logged daily costs") +
+          summaryCard("Net",money(grabber.profit),"Revenue less expenses") + '</div>' +
+          '<div class="two-column"><div class="panel"><div class="panel-head"><h3>Log grabber trips</h3></div><div class="panel-body">' +
+          '<form id="tripForm" class="inline-form"><div class="field span-2"><label for="tripCustomer">Customer</label><select class="select" id="tripCustomer" name="customerId" required><option value="">Select a customer</option>' +
+          (data.customers || []).map(c => '<option value="' + esc(c.id) + '">' + esc(c.name) + (c.phone ? ' · ' + esc(c.phone) : '') + '</option>').join("") +
+          '</select></div><div class="field"><label for="tripDate">Date</label><input class="input" id="tripDate" name="date" type="date" value="' + today() + '" required></div>' +
+          '<div class="field"><label for="tripCount">Trips completed</label><input class="input" id="tripCount" name="trips" type="number" min="1" step="1" required></div>' +
+          '<div class="field span-2"><label for="tripRevenue">Revenue from these trips</label><input class="input" id="tripRevenue" name="revenue" type="number" min="0" step="0.01" required placeholder="0.00"></div>' +
+          '<div class="span-2"><button class="button" type="submit">Save trip record</button></div></form></div></div>' +
+          '<div class="panel"><div class="panel-head"><h3>Log a daily expense</h3></div><div class="panel-body"><form id="driverExpenseForm">' +
+          '<div class="field"><label for="driverExpenseDate">Date</label><input class="input" id="driverExpenseDate" name="date" type="date" value="' + today() + '" required></div>' +
+          '<div class="field"><label for="driverExpenseDescription">Description</label><input class="input" id="driverExpenseDescription" name="description" required placeholder="Fuel, supplies, toll"></div>' +
+          '<div class="field"><label for="driverExpenseAmount">Amount</label><input class="input" id="driverExpenseAmount" name="amount" type="number" min="0" step="0.01" required placeholder="0.00"></div>' +
+          '<button class="button secondary" type="submit">Save expense</button></form></div></div></div>' +
+          '<div class="section-heading"><h3>My grabber report</h3></div>' +
+          '<form id="reportFilterForm" class="date-filters" style="margin-bottom:14px"><div class="field"><label for="reportFrom">From</label><input class="input" id="reportFrom" name="from" type="date" value="' + esc(report.from || monthStart()) + '"></div>' +
+          '<div class="field"><label for="reportTo">To</label><input class="input" id="reportTo" name="to" type="date" value="' + esc(report.to || today()) + '"></div><button class="button small">Apply period</button></form>' +
+          '<div class="two-column"><div class="panel"><div class="panel-head"><h3>Trips completed</h3></div>' + renderTripTable(report.trips || []) + '</div>' +
+          '<div class="panel"><div class="panel-head"><h3>Daily expenses</h3></div>' + renderExpenseTable(report.expenses || []) + '</div></div>';
+      }
 
-        if (groupSessions.length === 0) {
-          statusEl.textContent = "❌ No active sessions found for this invoice.";
+      function renderAdministration(data) {
+        const accounts = data.accounts || [];
+        const expenses = data.expenses || [];
+        return '<div class="page-head"><div><p class="eyebrow">Account controls</p><h2>Administration</h2><p>Create logins, set standard invoice charges, add operating costs and expand the fleet.</p></div></div>' +
+          '<div class="two-column"><div class="panel"><div class="panel-head"><h3>Create an account</h3></div><div class="panel-body"><form id="accountForm" class="inline-form">' +
+          field("Username","username","text","Unique username",true) +
+          '<div class="field"><label for="newRole">Role</label><select class="select" id="newRole" name="role"><option value="loader">Loader</option><option value="boiler">Boiler</option><option value="driver">Driver</option><option value="admin">Admin</option></select></div>' +
+          '<div class="field"><label for="newPassword">Password (10+ characters)</label><input class="input" id="newPassword" name="password" type="password" minlength="10" autocomplete="new-password" required></div>' +
+          '<div class="field"><label for="confirmPassword">Confirm password</label><input class="input" id="confirmPassword" name="confirmPassword" type="password" minlength="10" autocomplete="new-password" required></div>' +
+          '<div class="span-2"><button class="button" type="submit">Create account</button></div></form></div></div>' +
+          '<div class="panel"><div class="panel-head"><h3>Add standard invoice expense</h3></div><div class="panel-body"><form id="catalogForm">' +
+          '<div class="field"><label for="catalogAccount">Account</label><select class="select" id="catalogAccount" name="account"><option value="tanks">Tanks</option><option value="boilers">Boilers</option></select></div>' +
+          '<div class="field"><label for="catalogName">Expense name</label><input class="input" id="catalogName" name="name" required placeholder="Service charge"></div>' +
+          '<div class="field"><label for="catalogDescription">Description</label><input class="input" id="catalogDescription" name="description" placeholder="What this charge covers"></div>' +
+          '<div class="field"><label for="catalogAmount">Default price</label><input class="input" id="catalogAmount" name="amount" type="number" min="0" step="0.01" required placeholder="0.00"></div>' +
+          '<button class="button secondary" type="submit">Add default charge</button></form></div></div></div>' +
+          '<div class="section-heading"><h3>Accounts</h3><span>' + accounts.length + ' total</span></div>' +
+          (accounts.length ? '<div class="panel"><div class="table-wrap"><table><thead><tr><th>Username</th><th>Role</th><th>Status</th><th>Created</th></tr></thead><tbody>' +
+            accounts.map(a => '<tr><td><strong>' + esc(a.username) + '</strong></td><td style="text-transform:capitalize">' + esc(a.role) + '</td><td>' + (a.active ? '<span class="status-pill status-vacant">Active</span>' : '<span class="status-pill status-declined">Disabled</span>') +
+              '</td><td>' + dateShort(a.createdAt) + '</td></tr>').join("") + '</tbody></table></div></div>' :
+            '<div class="panel empty-state"><strong>No accounts yet</strong>Create additional accounts here.</div>') +
+          '<div class="section-heading"><h3>Standard invoice charges</h3><span>Applied per selected tank or boiler</span></div>' +
+          (expenses.length ? '<div class="panel"><div class="table-wrap"><table><thead><tr><th>Account</th><th>Charge</th><th>Description</th><th>Default price</th><th>Status</th></tr></thead><tbody>' +
+            expenses.map(e => '<tr><td style="text-transform:capitalize">' + esc(e.account) + '</td><td><strong>' + esc(e.name) + '</strong></td><td>' + esc(e.description || "—") + '</td><td>' + money(e.amount) + '</td><td>' + (e.active ? "Active" : "Inactive") + '</td></tr>').join("") + '</tbody></table></div></div>' :
+            '<div class="warning-box">No default invoice charges exist yet. Add at least one charge for each account before loading units.</div>') +
+          '<div class="section-heading"><h3>Operating expense</h3><span>Used in account profit calculations</span></div>' +
+          '<div class="panel"><div class="panel-body"><form id="accountExpenseForm" class="inline-form">' +
+          '<div class="field"><label for="operatingAccount">Account</label><select class="select" id="operatingAccount" name="account"><option value="tanks">Tanks</option><option value="boilers">Boilers</option><option value="grabber">Grabber</option></select></div>' +
+          '<div class="field"><label for="operatingDate">Date</label><input class="input" id="operatingDate" name="date" type="date" value="' + today() + '" required></div>' +
+          '<div class="field"><label for="operatingDescription">Description</label><input class="input" id="operatingDescription" name="description" required placeholder="Fuel, maintenance"></div>' +
+          '<div class="field"><label for="operatingAmount">Amount</label><input class="input" id="operatingAmount" name="amount" type="number" min="0" step="0.01" required></div>' +
+          '<div class="span-2"><button class="button secondary" type="submit">Record account expense</button></div></form></div></div>' +
+          '<div class="section-heading"><h3>Add a unit</h3><span>Fleet can grow beyond the initial 54 tanks and 6 boilers</span></div>' +
+          '<div class="panel"><div class="panel-body"><form id="resourceForm" class="toolbar"><select class="select" style="max-width:190px" name="account"><option value="tanks">Tank</option><option value="boilers">Boiler</option></select>' +
+          '<input class="input" style="max-width:240px" name="name" placeholder="Unit name (optional)"><button class="button secondary" type="submit">Add unit</button></form></div></div>';
+      }
+
+      function renderModalSession(detail, readOnly) {
+        const s = detail.session;
+        const items = detail.items || [];
+        const canPay = !readOnly && s.status === "open" && Number(s.balance) > 0 &&
+          ((state.user.role === "admin") || (state.user.role === "loader" && s.account === "tanks") || (state.user.role === "boiler" && s.account === "boilers"));
+        const changes = detail.approval && detail.approval.changes || [];
+        const body = '<div class="detail-grid">' +
+          detailCell("Customer",s.customerName) + detailCell("Invoice",s.invoiceNumber) +
+          detailCell("Units",s.resourceIds.join(", ")) + detailCell("Status",s.status.replace(/_/g," ")) +
+          detailCell("Due date",dateShort(s.dueAt)) + detailCell("Days left",s.daysLeft === null ? "—" : (s.daysLeft < 0 ? Math.abs(s.daysLeft) + " days overdue" : s.daysLeft + " days")) +
+          detailCell("Invoice total",money(s.total)) + detailCell("Paid / due",money(s.paid) + " / " + money(s.balance)) + '</div>' +
+          (changes.length ? '<div class="warning-box"><strong>Price changes</strong><br>' + changes.map(c => esc(c.description) + ': ' + money(c.oldPrice) + ' → ' + money(c.newPrice) + ' · ' + esc(c.changedBy)).join("<br>") + '</div>' : '') +
+          '<h3 class="modal-section-title">Expenses on this invoice</h3><div class="modal-list">' +
+          (items.length ? items.map(i => '<div class="modal-list-row"><div><strong>' + esc(i.description) + '</strong><small>' + esc(i.resourceId) + ' · added by ' + esc(i.addedBy) + (i.isOverride ? ' · price changed' : '') + '</small></div><span class="amount">' + money(i.lineTotal) + '</span></div>').join("") :
+            '<div class="empty-state">No expense lines found.</div>') + '</div>' +
+          (detail.payments && detail.payments.length ? '<h3 class="modal-section-title">Payments received</h3><div class="modal-list">' + detail.payments.map(p =>
+            '<div class="modal-list-row"><div><strong>' + money(p.amount) + ' · ' + esc(p.method) + '</strong><small>' + dateShort(p.date) + ' · ' + esc(p.by) + '</small></div></div>').join("") + '</div>' : '') +
+          (s.status === "open" && s.balance > 0 ? '<div class="warning-box" style="margin-top:14px">The unit stays occupied until the full balance is paid. Current balance due: <b>' + money(s.balance) + '</b>.</div>' : '');
+        const footer = '<button class="button ghost" data-action="viewCustomerSessions" data-id="' + esc(s.customerId) + '">View customer sessions</button>' +
+          '<button class="button secondary" data-action="statement" data-id="' + esc(s.sessionId) + '">Download statement</button>' +
+          (canPay ? '<button class="button" data-action="pay" data-id="' + esc(s.sessionId) + '">Record payment</button>' : '');
+        return {body,footer};
+      }
+      function detailCell(label,value) {
+        return '<div class="detail-cell"><span>' + esc(label) + '</span><strong>' + esc(value) + '</strong></div>';
+      }
+      function showModal(title,body,footer) {
+        document.getElementById("modalTitle").textContent = title;
+        document.getElementById("modalBody").innerHTML = body || "";
+        document.getElementById("modalFooter").innerHTML = footer || '<button class="button secondary" data-action="closeModal">Close</button>';
+        document.getElementById("modalLayer").hidden = false;
+        state.modalOpen = true;
+        document.body.style.overflow = "hidden";
+      }
+      function closeModal() {
+        document.getElementById("modalLayer").hidden = true;
+        state.modalOpen = false;
+        document.body.style.overflow = "";
+      }
+      function checkPending(list) {
+        if (!state.user || state.user.role !== "admin" || !list.length || state.modalOpen) return;
+        const next = list.find(item => !state.seenPending.has(item.sessionId));
+        if (!next) return;
+        state.seenPending.add(next.sessionId);
+        setTimeout(() => { if (!state.modalOpen) showApprovalModal(next); }, 120);
+      }
+      function showApprovalModal(item) {
+        const changes = item.changes || [];
+        const allItems = item.items || [];
+        const body = '<div class="subtle-box">This invoice is waiting for your approval. Review each price change and the loader who submitted it. Approval starts the session; declining releases the units as vacant.</div>' +
+          '<div class="detail-grid" style="margin-top:14px">' +
+          detailCell("Invoice",item.invoiceNumber) + detailCell("Customer",item.customerName) +
+          detailCell("Units",item.resourceIds.join(", ")) + detailCell("Submitted by",item.createdBy) +
+          detailCell("Submitted",dateShort(item.createdAt)) + detailCell("Invoice total",money(item.total)) +
+          detailCell("Paid / due",money(item.paid) + " / " + money(item.balance)) + detailCell("Due date",dateShort(item.dueAt)) + '</div>' +
+          '<h3 class="modal-section-title">Full invoice</h3><div class="modal-list">' +
+          allItems.map(line => '<div class="modal-list-row"><div><strong>' + esc(line.description) + '</strong><small>' + esc(line.resourceId) +
+            ' · ' + (line.isOverride ? "price changed" : "standard price") + ' · added by ' + esc(line.addedBy) + '</small></div><span class="amount">' +
+            money(line.lineTotal) + '</span></div>').join("") + '</div>' +
+          '<h3 class="modal-section-title">Changed and added prices</h3><div class="modal-list">' +
+          changes.map(c => '<div class="modal-list-row"><div><strong>' + esc(c.description) + '</strong><small>' + esc(c.resourceId) + ' · submitted by ' + esc(c.changedBy) + '</small></div><span class="amount">' +
+            (c.additional ? "New · " : money(c.oldPrice) + " → ") + money(c.newPrice) + '</span></div>').join("") + '</div>' +
+          '<div class="field" style="margin-top:15px"><label for="approvalReason">Decision note (required when declining)</label><input class="input" id="approvalReason" placeholder="Add a short note"></div>';
+        const footer = '<button class="button secondary" data-action="closeModal">Review later</button>' +
+          '<button class="button danger" data-action="decline" data-id="' + esc(item.sessionId) + '">Decline</button>' +
+          '<button class="button success" data-action="approve" data-id="' + esc(item.sessionId) + '">Approve invoice</button>';
+        showModal("Price verification required",body,footer);
+      }
+
+      async function openResource(id,account) {
+        const pool = account === "tanks" ? state.data.tanks : state.data.boilers;
+        const resource = (pool || []).find(r => r.id === id);
+        if (!resource) return;
+        const canViewInvoice = state.user.role === "admin" ||
+          (state.user.role === "loader" && account === "tanks") ||
+          (state.user.role === "boiler" && account === "boilers");
+        if (!resource.sessionId || !canViewInvoice) {
+          showModal(resource.name,'<div class="detail-grid">' + detailCell("Unit",resource.name) + detailCell("Type",account === "tanks" ? "Tank" : "Boiler") +
+            detailCell("Status",resource.status.replace(/_/g," ")) + detailCell("Notes",resource.notes || "—") + '</div>' +
+            (!canViewInvoice ? '<p class="quiet">The dashboard shows current availability. Invoice details are limited to the matching loading and emptying role.</p>' : ''),
+            '<button class="button secondary" data-action="closeModal">Close</button>');
           return;
         }
-
-        const writeId = "WID-" + Date.now() + "-" + Math.random().toString(36).substring(2, 7);
-        const nowIso = new Date().toISOString();
-
-        const paymentId = "PAY-" + Date.now();
-        const paymentObj = {
-          paymentId, 
-          invoiceId: groupSessions[0].invoiceId || invNum, 
-          invoiceNumber: invNum,
-          customerId: groupSessions[0].customerId, 
-          amount: inputAmt,
-          paymentStatus: "CONFIRMED", 
-          paymentDate: nowIso, 
-          confirmedBy: currentUser.username, 
-          note
-        };
-        await idbPut("payments", paymentObj);
-
-        const sessionIds = [];
-        const tanksToUpdate = [];
-        
-        for (const sess of groupSessions) {
-          sess.status = "COMPLETED";
-          sess.emptyingDate = nowIso;
-          await idbPut("sessions", sess);
-          sessionIds.push(sess.sessionId);
-          
-          const tank = await idbGet("tanks", sess.tankId);
-          if (tank) { 
-            tank.status = "VACANT"; 
-            tank.updatedAt = nowIso; 
-            await idbPut("tanks", tank);
-            tanksToUpdate.push(tank);
-          }
-        }
-
-        const auditObj = {
-          auditId: "AUD-" + Date.now(), 
-          writeId, 
-          timestamp: nowIso,
-          action: "TANK_EMPTIED_PAYMENT_CONFIRMED", 
-          entityType: "PAYMENT",
-          entityId: paymentId, 
-          invoiceNumber: invNum, 
-          customer: groupSessions[0].customerName,
-          user: currentUser.username, 
-          details: `Emptied ${groupSessions.length} tank(s). Payment of $${inputAmt.toFixed(2)} confirmed.`
-        };
-        await idbPut("auditTrail", auditObj);
-
-        await idbPut("syncQueue", {
-          writeId, 
-          deviceId: DEVICE_ID, 
-          timestamp: nowIso,
-          operation: "EMPTY_TANK_PAYMENT", 
-          entityType: "PAYMENTS",
-          payload: { 
-            payment: paymentObj, 
-            sessionIds: sessionIds, 
-            tanks: tanksToUpdate,
-            sessions: groupSessions,
-            audit: auditObj 
-          }
-        });
-
-        statusEl.style.display = "block";
-        statusEl.style.color = "var(--success)";
-        statusEl.textContent = `✅ Successfully emptied ${groupSessions.length} tank(s) and confirmed payment of $${inputAmt.toFixed(2)}`;
-
-        setTimeout(() => {
-          renderEmptyWorkspace();
-          renderDashboard();
-        }, 1200);
-
-        triggerSyncQueueProcess();
-        fetchLiveData();
-
-      } catch (error) {
-        statusEl.style.display = "block";
-        statusEl.style.color = "var(--danger)";
-        statusEl.textContent = "❌ Error: " + error.message;
-        console.error("Empty error:", error);
-      }
-    }
-
-    // ------------------------------------------------------------------------
-    // SESSIONS VIEWS
-    // ------------------------------------------------------------------------
-    async function renderLiveSessions() {
-      const sessions = await idbGetAll("sessions");
-      const filterText = document.getElementById("liveSessionSearch").value.toLowerCase();
-      const container = document.getElementById("liveSessionsList");
-      container.innerHTML = "";
-      const active = sessions.filter(s => s.status !== "COMPLETED" &&
-        (s.customerName.toLowerCase().includes(filterText) || s.invoiceNumber.toLowerCase().includes(filterText) || s.tankId.toLowerCase().includes(filterText)));
-      if (active.length === 0) { container.innerHTML = `<div class="workspace-card">No live sessions match.</div>`; return; }
-      active.forEach(s => {
-        container.innerHTML += `
-          <div class="workspace-card" style="padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div><strong>${s.tankId}</strong> — ${s.customerName}</div>
-              <span class="badge badge-occupied">OCCUPIED</span>
-            </div>
-            <div style="font-size:0.85rem; line-height:1.5; margin-top:4px;">
-              <div><strong>Invoice:</strong> ${s.invoiceNumber}</div>
-              <div><strong>Loaded:</strong> ${new Date(s.loadingDate).toLocaleDateString()}</div>
-              <div><strong>Value:</strong> $${(s.totalSelling || 0).toFixed(2)}</div>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    async function renderCompletedSessions() {
-      const sessions = await idbGetAll("sessions");
-      const filterText = document.getElementById("completedSessionSearch").value.toLowerCase();
-      const container = document.getElementById("completedSessionsList");
-      container.innerHTML = "";
-      const completed = sessions.filter(s => s.status === "COMPLETED" &&
-        (s.customerName.toLowerCase().includes(filterText) || s.invoiceNumber.toLowerCase().includes(filterText) || s.tankId.toLowerCase().includes(filterText)));
-      if (completed.length === 0) { container.innerHTML = `<div class="workspace-card">No completed records found.</div>`; return; }
-      completed.forEach(s => {
-        container.innerHTML += `
-          <div class="workspace-card" style="padding:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div><strong>${s.tankId}</strong> — ${s.customerName}</div>
-              <span class="badge badge-completed">COMPLETED</span>
-            </div>
-            <div style="font-size:0.85rem; line-height:1.5; margin-top:4px;">
-              <div><strong>Invoice:</strong> ${s.invoiceNumber}</div>
-              <div><strong>Emptied:</strong> ${s.emptyingDate ? new Date(s.emptyingDate).toLocaleDateString() : 'N/A'}</div>
-              <div><strong>Revenue:</strong> $${(s.totalSelling || 0).toFixed(2)} | <strong>Profit:</strong> $${(s.profit || 0).toFixed(2)}</div>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    // ------------------------------------------------------------------------
-    // REPORTS & CRISP GRAPH VISUALS
-    // ------------------------------------------------------------------------
-    async function renderReports() {
-      const customers = await idbGetAll("customers");
-      const custSelect = document.getElementById("reportFilterCustomer");
-      custSelect.innerHTML = `<option value="ALL">All Customers</option>`;
-      customers.forEach(c => custSelect.innerHTML += `<option value="${c.name}">${c.name}</option>`);
-      applyReportFilters();
-    }
-
-    async function applyReportFilters() {
-      const sessions = await idbGetAll("sessions");
-      const custFilter = document.getElementById("reportFilterCustomer").value;
-      const dateFrom = document.getElementById("reportFilterDateFrom").value;
-      const dateTo = document.getElementById("reportFilterDateTo").value;
-      const statusFilter = document.getElementById("reportFilterStatus").value;
-
-      let filtered = sessions.filter(s => {
-        if (custFilter !== "ALL" && s.customerName !== custFilter) return false;
-        if (statusFilter !== "ALL" && s.status !== statusFilter) return false;
-        if (dateFrom && new Date(s.loadingDate) < new Date(dateFrom)) return false;
-        if (dateTo && new Date(s.loadingDate) > new Date(dateTo + "T23:59:59")) return false;
-        return true;
-      });
-
-      const totalRev = filtered.reduce((a, b) => a + (b.totalSelling || 0), 0);
-      const totalCost = filtered.reduce((a, b) => a + (b.totalCost || 0), 0);
-      const totalProfit = totalRev - totalCost;
-
-      document.getElementById("reportRev").innerText = `$${totalRev.toFixed(2)}`;
-      document.getElementById("reportCost").innerText = `$${totalCost.toFixed(2)}`;
-      document.getElementById("reportProfit").innerText = `$${totalProfit.toFixed(2)}`;
-
-      drawFinancialsChart(totalRev, totalCost, totalProfit);
-      drawUtilisationChart();
-    }
-
-    function setupCanvasForHighDPI(canvas) {
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.parentElement.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      const ctx = canvas.getContext("2d");
-      ctx.scale(dpr, dpr);
-      return { ctx, width: rect.width, height: rect.height };
-    }
-
-    function drawFinancialsChart(rev, cost, profit) {
-      const canvas = document.getElementById("chartFinancials");
-      if (!canvas) return;
-      const { ctx, width, height } = setupCanvasForHighDPI(canvas);
-
-      ctx.clearRect(0, 0, width, height);
-
-      const maxVal = Math.max(rev, cost, profit, 10);
-      const padding = 40;
-      const barWidth = Math.min(55, (width - 90) / 3.5);
-      const gap = 20;
-      const startX = (width - (3 * barWidth + 2 * gap)) / 2;
-      const chartHeight = height - 60;
-
-      ctx.strokeStyle = "#e2e8f0";
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = height - padding - (i / 4) * chartHeight;
-        ctx.beginPath();
-        ctx.moveTo(padding - 5, y);
-        ctx.lineTo(width - padding + 5, y);
-        ctx.stroke();
-        ctx.fillStyle = "#64748b";
-        ctx.font = "600 10px sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText("$" + Math.round((i / 4) * maxVal), padding - 8, y + 3);
-      }
-
-      const items = [
-        { label: "Revenue", val: rev, color: "#0641ab" },
-        { label: "Costs", val: cost, color: "#dc2626" },
-        { label: "Profit", val: profit, color: "#16a34a" }
-      ];
-
-      items.forEach((item, i) => {
-        const x = startX + i * (barWidth + gap);
-        const h = Math.max((item.val / maxVal) * chartHeight, 3);
-        const y = height - padding - h;
-
-        ctx.fillStyle = item.color;
-        ctx.fillRect(x, y, barWidth, h);
-
-        ctx.fillStyle = "#0f172a";
-        ctx.font = "bold 11px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("$" + item.val.toFixed(0), x + barWidth / 2, y - 6);
-
-        ctx.fillStyle = "#475569";
-        ctx.font = "600 11px sans-serif";
-        ctx.fillText(item.label, x + barWidth / 2, height - 12);
-      });
-    }
-
-    async function drawUtilisationChart() {
-      const canvas = document.getElementById("chartUtilisation");
-      if (!canvas) return;
-      const tanks = await idbGetAll("tanks");
-      const occupied = tanks.filter(t => t.status === "OCCUPIED" || t.status === "READY_TO_EMPTY").length;
-      const vacant = tanks.filter(t => t.status === "VACANT" && t.active).length;
-
-      const { ctx, width, height } = setupCanvasForHighDPI(canvas);
-
-      ctx.clearRect(0, 0, width, height);
-
-      const total = occupied + vacant;
-      if (total === 0) { 
-        ctx.fillStyle = "#64748b"; 
-        ctx.font = "14px sans-serif"; 
-        ctx.textAlign = "center"; 
-        ctx.fillText("No tank data available", width / 2, height / 2); 
-        return; 
-      }
-
-      const centerX = width / 2;
-      const centerY = height / 2 - 10;
-      const radius = Math.min(centerX, centerY) - 20;
-
-      let startAngle = -Math.PI / 2;
-      const slices = [
-        { label: "Occupied", count: occupied, color: "#ea580c" },
-        { label: "Vacant", count: vacant, color: "#16a34a" }
-      ];
-
-      slices.forEach(slice => {
-        const sliceAngle = (slice.count / total) * 2 * Math.PI;
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY);
-        ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
-        ctx.closePath();
-        ctx.fillStyle = slice.color;
-        ctx.fill();
-        startAngle += sliceAngle;
-      });
-
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius * 0.55, 0, 2 * Math.PI);
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
-
-      ctx.fillStyle = "#0f172a";
-      ctx.font = "bold 16px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(`${Math.round((occupied / total) * 100)}%`, centerX, centerY - 2);
-      ctx.font = "600 10px sans-serif";
-      ctx.fillStyle = "#64748b";
-      ctx.fillText("Utilised", centerX, centerY + 14);
-
-      let legendX = width / 2 - 70;
-      const legendY = height - 16;
-      slices.forEach(slice => {
-        ctx.fillStyle = slice.color;
-        ctx.fillRect(legendX, legendY, 12, 12);
-        ctx.fillStyle = "#0f172a";
-        ctx.font = "600 11px sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText(`${slice.label} (${slice.count})`, legendX + 16, legendY + 10);
-        legendX += 85;
-      });
-    }
-
-    async function loadPreviousSessionData() {
-      if (!isOnline) { alert("Connectivity required."); return; }
-      try {
-        const res = await fetch(GAS_WEB_APP_URL, {
-          method: "POST", headers: { "Content-Type": "text/plain" },
-          body: JSON.stringify({ action: "getSessions" })
-        });
-        const data = await res.json();
-        if (data.status === "SUCCESS") {
-          for (const s of data.sessions) await idbPut("sessions", s);
-          alert(`Synced ${data.sessions.length} records.`);
-          applyReportFilters();
-        }
-      } catch (err) { alert("Failed: " + err.message); }
-    }
-
-    // ------------------------------------------------------------------------
-    // AUDIT TRAIL
-    // ------------------------------------------------------------------------
-    async function renderAuditTrail() {
-      const audit = await idbGetAll("auditTrail");
-      audit.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      const tbody = document.getElementById("auditTrailTableBody");
-      tbody.innerHTML = "";
-      audit.forEach(a => {
-        tbody.innerHTML += `<tr><td>${new Date(a.timestamp).toLocaleString()}</td><td><strong>${a.action}</strong></td><td>${a.entityType}</td><td>${a.invoiceNumber || a.entityId}</td><td>${a.details}</td><td>${a.user || 'System'}</td></tr>`;
-      });
-    }
-
-    // ------------------------------------------------------------------------
-    // SETTINGS
-    // ------------------------------------------------------------------------
-    function openSettingsWithAuth() {
-      if (currentUser && currentUser.role === "admin") {
-        switchView("viewSettings");
-      } else {
-        document.getElementById("passwordModal").classList.add("active");
-      }
-    }
-
-    function closeAuthModal() {
-      document.getElementById("passwordModal").classList.remove("active");
-      document.getElementById("adminPasswordInput").value = "";
-    }
-
-    function verifyAdminPassword() {
-      const pwd = document.getElementById("adminPasswordInput").value;
-      if (pwd === "admin") {
-        closeAuthModal();
-        switchView("viewSettings");
-      } else {
-        alert("Invalid administrator password.");
-      }
-    }
-
-    async function renderSettings() {
-      if (!currentUser || currentUser.role !== "admin") {
-        document.getElementById("viewSettings").innerHTML = `<div class="workspace-card"><h3>Access Denied</h3><p>Administrator privileges required.</p></div>`;
-        return;
-      }
-      const tanks = await idbGetAll("tanks");
-      const tBody = document.getElementById("settingsTankTableBody");
-      tBody.innerHTML = "";
-      tanks.forEach(t => {
-        tBody.innerHTML += `<tr><td>${t.tankName}</td><td>${t.status}</td><td>${t.active ? 'Active' : 'Inactive'}</td><td><button class="btn btn-outline" style="padding:2px 6px; font-size:0.7rem; width:auto;" onclick="toggleTankActive('${t.tankId}', ${!t.active})">${t.active ? 'Deactivate' : 'Activate'}</button></td></tr>`;
-      });
-
-      const expenses = await idbGetAll("expenses");
-      const eBody = document.getElementById("settingsExpenseTableBody");
-      eBody.innerHTML = "";
-      expenses.forEach(e => {
-        eBody.innerHTML += `<tr><td>${e.name}</td><td>$${e.defaultCost.toFixed(2)}</td><td>$${e.defaultSelling.toFixed(2)}</td><td>${e.active ? 'Active' : 'Inactive'}</td><td><button class="btn btn-outline" style="padding:2px 6px; font-size:0.7rem; width:auto;" onclick="toggleExpenseActive('${e.expenseId}', ${!e.active})">${e.active ? 'Deactivate' : 'Activate'}</button></td></tr>`;
-      });
-    }
-
-    async function addNewTank() {
-      const name = document.getElementById("newTankName").value.trim();
-      if (!name) return alert("Tank name required.");
-      const tankId = "T-" + Math.random().toString(36).substring(2, 7);
-      await idbPut("tanks", { tankId, tankName: name, status: "VACANT", active: true, createdAt: new Date().toISOString() });
-      document.getElementById("newTankName").value = "";
-      renderSettings();
-      renderDashboard();
-      triggerSyncQueueProcess();
-    }
-
-    async function toggleTankActive(tankId, newActiveState) {
-      const tank = await idbGet("tanks", tankId);
-      if (tank) { tank.active = newActiveState; tank.updatedAt = new Date().toISOString(); await idbPut("tanks", tank); renderSettings(); }
-    }
-
-    async function addNewPredefinedExpense() {
-      const name = document.getElementById("newExpenseName").value.trim();
-      const cost = parseFloat(document.getElementById("newExpenseCost").value) || 0;
-      const selling = parseFloat(document.getElementById("newExpenseSelling").value) || 0;
-      if (!name) return alert("Expense name required.");
-      const expId = "EXP-" + Math.random().toString(36).substring(2, 7);
-      await idbPut("expenses", { expenseId: expId, name, description: name, defaultCost: cost, defaultSelling: selling, active: true });
-      document.getElementById("newExpenseName").value = "";
-      document.getElementById("newExpenseCost").value = "";
-      document.getElementById("newExpenseSelling").value = "";
-      renderSettings();
-      triggerSyncQueueProcess();
-    }
-
-    async function toggleExpenseActive(expId, newActiveState) {
-      const exp = await idbGet("expenses", expId);
-      if (exp) { exp.active = newActiveState; await idbPut("expenses", exp); renderSettings(); }
-    }
-
-    // ------------------------------------------------------------------------
-    // SYNC ENGINE
-    // ------------------------------------------------------------------------
-    function updateOnlineStatusIndicator() {
-      isOnline = navigator.onLine;
-      const badge = document.getElementById("syncStatusBadge");
-      const dot = document.getElementById("syncDot");
-      const txt = document.getElementById("syncStatusText");
-      if (isOnline) {
-        badge.className = "sync-badge sync-online";
-        dot.style.background = "#15803d";
-        txt.innerText = "ONLINE";
-        triggerSyncQueueProcess();
-      } else {
-        badge.className = "sync-badge sync-offline";
-        dot.style.background = "#b91c1c";
-        txt.innerText = "OFFLINE";
-      }
-    }
-
-    window.addEventListener("online", updateOnlineStatusIndicator);
-    window.addEventListener("offline", updateOnlineStatusIndicator);
-
-    async function triggerSyncQueueProcess() {
-      if (!isOnline) return;
-      const syncQueue = await idbGetAll("syncQueue");
-      if (syncQueue.length === 0) return;
-      const badge = document.getElementById("syncStatusBadge");
-      const dot = document.getElementById("syncDot");
-      const txt = document.getElementById("syncStatusText");
-      badge.className = "sync-badge sync-syncing";
-      dot.style.background = "#a16207";
-      txt.innerText = "SYNCING...";
-
-      for (const item of syncQueue) {
         try {
-          const response = await fetch(GAS_WEB_APP_URL, {
-            method: "POST", headers: { "Content-Type": "text/plain" },
-            body: JSON.stringify({ action: "syncWrite", writeId: item.writeId, deviceId: item.deviceId, timestamp: item.timestamp, payload: item.payload })
+          const result = await rpc("sessionDetail",{sessionId:resource.sessionId});
+          const content = renderModalSession(result.data,false);
+          showModal(resource.name + " · " + result.data.session.customerName,content.body,content.footer);
+        } catch (error) { toast(error.message,"error"); }
+      }
+      async function openSession(id) {
+        try {
+          const result = await rpc("sessionDetail",{sessionId:id});
+          const content = renderModalSession(result.data,false);
+          showModal(result.data.session.invoiceNumber,content.body,content.footer);
+        } catch (error) { toast(error.message,"error"); }
+      }
+      async function reviewApproval(id) {
+        const item = (state.data.pendingApprovals || []).find(a => a.sessionId === id);
+        if (item) showApprovalModal(item);
+      }
+      async function submitApproval(id, approve) {
+        const reason = document.getElementById("approvalReason") ? document.getElementById("approvalReason").value.trim() : "";
+        if (!approve && !reason) { toast("Add a reason before declining.","error"); return; }
+        try {
+          const result = await rpc(approve ? "approveInvoice" : "declineInvoice",{sessionId:id,reason});
+          closeModal();
+          toast(result.data.message,"success");
+          await refreshPage();
+        } catch (error) { toast(error.message,"error"); }
+      }
+      async function openPayment(id) {
+        const detail = await rpc("sessionDetail",{sessionId:id});
+        const s = detail.data.session;
+        const body = '<div class="detail-grid">' + detailCell("Customer",s.customerName) + detailCell("Invoice",s.invoiceNumber) +
+          detailCell("Balance due",money(s.balance)) + detailCell("Units",s.resourceIds.join(", ")) + '</div>' +
+          '<form id="paymentForm"><input type="hidden" name="sessionId" value="' + esc(id) + '">' +
+          '<div class="field"><label for="paymentAmount">Amount received</label><input class="input" id="paymentAmount" name="amount" type="number" min="0.01" max="' + esc(s.balance) + '" step="0.01" value="' + esc(s.balance) + '" required></div>' +
+          '<div class="field"><label for="paymentMethod">Payment method</label><select class="select" id="paymentMethod" name="method"><option>cash</option><option>bank transfer</option><option>card</option><option>other</option></select></div></form>';
+        showModal("Record payment",body,'<button class="button secondary" data-action="closeModal">Cancel</button><button class="button" data-action="submitPayment">Pay and download receipt</button>');
+      }
+      async function submitPayment() {
+        const form = document.getElementById("paymentForm");
+        if (!form.reportValidity()) return;
+        const values = Object.fromEntries(new FormData(form).entries());
+        try {
+          const result = await rpc("recordPayment",{sessionId:values.sessionId,amount:Number(values.amount),method:values.method});
+          downloadFile(result.data.receiptHtml);
+          closeModal();
+          toast(result.data.message,"success");
+          await refreshPage();
+        } catch (error) { toast(error.message,"error"); }
+      }
+      async function downloadStatement(id) {
+        try {
+          const result = await rpc("makeStatement",{sessionId:id});
+          downloadFile(result.data);
+        } catch (error) { toast(error.message,"error"); }
+      }
+      function downloadFile(file) {
+        if (!file || !file.base64) { toast("The PDF could not be created.","error"); return; }
+        const bytes = Uint8Array.from(atob(file.base64),c => c.charCodeAt(0));
+        const blob = new Blob([bytes],{type:file.mimeType || "application/pdf"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = file.filename || "statement.pdf";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url),1500);
+      }
+
+      async function submitNewCustomer(form) {
+        const v = Object.fromEntries(new FormData(form).entries());
+        try {
+          const result = await rpc("createCustomer",v);
+          state.loadDraft.customerId = result.data.id;
+          state.loadDraft.newCustomer = false;
+          state.loadDraft.step = 2;
+          toast("Customer added.","success");
+          await refreshPage();
+        } catch (error) { toast(error.message,"error"); }
+      }
+      async function submitLoad() {
+        const d = state.loadDraft;
+        if (!d || !d.customerId || !d.selected.size) return;
+        const notes = document.getElementById("loadNotes") ? document.getElementById("loadNotes").value : "";
+        try {
+          const result = await rpc("createSession",{
+            account:d.account,customerId:d.customerId,resourceIds:[...d.selected],
+            includedExpenseIds:[...d.included],priceOverrides:d.overrides,additionalExpenses:d.additions,notes
           });
-          const resData = await response.json();
-          if (resData.status === "SUCCESS" || resData.status === "ALREADY_PROCESSED") {
-            await idbDelete("syncQueue", item.writeId);
+          toast(result.data.message,result.data.requiresApproval ? "" : "success");
+          d.step = 1; d.selected.clear(); d.customerId = ""; d.included.clear(); d.overrides = {}; d.additions = [];
+          await refreshPage();
+          if (result.data.sessionId && !result.data.requiresApproval) await openSession(result.data.sessionId);
+        } catch (error) { toast(error.message,"error"); }
+      }
+
+      async function applyReportFilters(form) {
+        const values = Object.fromEntries(new FormData(form).entries());
+        state.reportFilters = {from:values.from,to:values.to,account:values.account || ""};
+        if (state.section === "reports" || state.section === "driver") await refreshPage();
+      }
+      async function submitFormAction(form, action, message) {
+        const values = Object.fromEntries(new FormData(form).entries());
+        try {
+          const result = await rpc(action,values);
+          toast(result.data.message || message || "Saved.","success");
+          form.reset();
+          await refreshPage();
+        } catch (error) { toast(error.message,"error"); }
+      }
+
+      document.addEventListener("submit", async event => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        event.preventDefault();
+        if (form.id === "loginForm") {
+          const button = document.getElementById("loginButton");
+          setBusy(button,true,"Signing in…");
+          document.getElementById("loginError").textContent = "";
+          const values = Object.fromEntries(new FormData(form).entries());
+          try {
+            const result = await enqueue("login",values);
+            state.token = result.token; state.user = result.user;
+            sessionStorage.setItem("enican-token",result.token);
+            sessionStorage.setItem("enican-user",result.user.username);
+            sessionStorage.setItem("enican-role",result.user.role);
+            const first = await rpc("section",{section:"dashboard"});
+            enterApp(first.data);
+          } catch (error) { document.getElementById("loginError").textContent = error.message; }
+          finally { setBusy(button,false); }
+        } else if (form.id === "bootstrapForm") {
+          const button = document.getElementById("bootstrapButton");
+          setBusy(button,true,"Creating account…");
+          document.getElementById("bootstrapError").textContent = "";
+          const values = Object.fromEntries(new FormData(form).entries());
+          try {
+            const result = await enqueue("bootstrapAdmin",values);
+            state.token = result.token; state.user = result.user;
+            sessionStorage.setItem("enican-token",result.token);
+            sessionStorage.setItem("enican-user",result.user.username);
+            sessionStorage.setItem("enican-role",result.user.role);
+            const first = await rpc("section",{section:"dashboard"});
+            enterApp(first.data);
+          } catch (error) { document.getElementById("bootstrapError").textContent = error.message; }
+          finally { setBusy(button,false); }
+        } else if (form.id === "customerForm") {
+          await submitNewCustomer(form);
+        } else if (form.id === "paymentForm") {
+          await submitPayment();
+        } else if (form.id === "reportFilterForm") {
+          await applyReportFilters(form);
+        } else if (form.id === "tripForm") {
+          await submitFormAction(form,"createDriverTrip","Trip record saved.");
+        } else if (form.id === "driverExpenseForm") {
+          await submitFormAction(form,"createDriverExpense","Expense recorded.");
+        } else if (form.id === "accountForm") {
+          const values = Object.fromEntries(new FormData(form).entries());
+          if (values.password !== values.confirmPassword) { toast("Passwords do not match.","error"); return; }
+          await submitFormAction(form,"createAccount","Account created.");
+        } else if (form.id === "catalogForm") {
+          await submitFormAction(form,"addCatalogExpense","Default expense added.");
+        } else if (form.id === "accountExpenseForm") {
+          await submitFormAction(form,"addAccountExpense","Account expense recorded.");
+        } else if (form.id === "resourceForm") {
+          await submitFormAction(form,"addResource","Unit added.");
+        }
+      });
+
+      document.addEventListener("input", event => {
+        if (event.target.id === "customerSearch" && state.loadDraft) {
+          const cursor = event.target.selectionStart;
+          state.loadDraft.search = event.target.value;
+          const value = state.loadDraft.search;
+          const filtered = (state.data.customers || []).filter(c => !value.trim() || [c.name,c.phone,c.address].join(" ").toLowerCase().includes(value.trim().toLowerCase()));
+          const results = document.querySelector(".customer-results");
+          if (results) results.innerHTML = filtered.slice(0,100).map(c =>
+            '<button type="button" class="customer-result ' + (state.loadDraft.customerId === c.id ? "selected" : "") + '" data-action="chooseCustomer" data-id="' + esc(c.id) + '">' +
+            '<span class="avatar">' + esc(c.name.slice(0,2).toUpperCase()) + '</span><span><strong>' + esc(c.name) + '</strong><small>' + esc(c.phone || "No phone") + ' · ' + esc(c.address || "No address") + '</small></span>' +
+            (state.loadDraft.customerId === c.id ? '<span class="button small">Selected</span>' : '') + '</button>').join("") ||
+            '<div class="empty-state"><strong>No matching customers</strong>Add this customer to continue.</div>';
+          event.target.setSelectionRange(cursor,cursor);
+        }
+      });
+      document.addEventListener("change", event => {
+        const el = event.target;
+        if (!state.loadDraft) return;
+        if (el.matches("[data-select-resource]")) {
+          if (el.checked) state.loadDraft.selected.add(el.dataset.selectResource);
+          else state.loadDraft.selected.delete(el.dataset.selectResource);
+          renderPage();
+        } else if (el.matches("[data-select-expense]")) {
+          if (el.checked) state.loadDraft.included.add(el.dataset.selectExpense);
+          else state.loadDraft.included.delete(el.dataset.selectExpense);
+          renderPage();
+        } else if (el.matches("[data-expense-price]")) {
+          state.loadDraft.overrides[el.dataset.expensePrice] = Number(el.value);
+          const active = document.activeElement;
+          renderPage();
+          const fresh = document.querySelector('[data-expense-price="' + CSS.escape(el.dataset.expensePrice) + '"]');
+          if (fresh) { fresh.focus(); fresh.setSelectionRange(fresh.value.length,fresh.value.length); }
+        } else if (el.matches("[data-add-price]")) {
+          const index = Number(el.dataset.addPrice);
+          state.loadDraft.additions[index].amount = Number(el.value);
+          const fresh = document.querySelector('[data-add-price="' + index + '"]');
+          if (fresh) {
+            const summary = document.querySelector(".detail-grid");
+            if (summary) renderPage();
           }
-        } catch (err) { console.warn("Sync failed:", err); break; }
+        }
+      });
+      document.addEventListener("click", async event => {
+        const target = event.target.closest("[data-action]");
+        if (!target) {
+          if (event.target === document.getElementById("modalLayer")) closeModal();
+          return;
+        }
+        const action = target.dataset.action;
+        if (action === "navigate") await changeSection(target.dataset.section);
+        else if (action === "refresh") await refreshPage();
+        else if (action === "menu") {
+          document.getElementById("sidebar").classList.toggle("open");
+          document.getElementById("mobileBackdrop").classList.toggle("open");
+        }
+        else if (action === "logout") {
+          try { await rpc("logout",{}); } catch (_) {}
+          if (state.timer) clearInterval(state.timer);
+          clearAuth();
+          document.getElementById("appShell").hidden = true;
+          document.getElementById("loginScreen").hidden = false;
+        } else if (action === "closeModal") closeModal();
+        else if (action === "resource") await openResource(target.dataset.id,target.dataset.account);
+        else if (action === "session") await openSession(target.dataset.id);
+        else if (action === "viewCustomerSessions") {
+          state.customerFilter = target.dataset.id;
+          closeModal();
+          state.section = "customerSessions";
+          renderNavigation();
+          await refreshPage();
+        }
+        else if (action === "reviewApproval") await reviewApproval(target.dataset.id);
+        else if (action === "approve") await submitApproval(target.dataset.id,true);
+        else if (action === "decline") await submitApproval(target.dataset.id,false);
+        else if (action === "pay") await openPayment(target.dataset.id);
+        else if (action === "submitPayment") await submitPayment();
+        else if (action === "statement") await downloadStatement(target.dataset.id);
+        else if (action === "chooseCustomer" && state.loadDraft) {
+          state.loadDraft.customerId = target.dataset.id;
+          renderPage();
+        } else if (action === "newCustomer" && state.loadDraft) {
+          state.loadDraft.newCustomer = true;
+          renderPage();
+        } else if (action === "cancelNewCustomer" && state.loadDraft) {
+          state.loadDraft.newCustomer = false;
+          renderPage();
+        } else if (action === "loadStep" && state.loadDraft) {
+          const step = Number(target.dataset.step);
+          if (step === 2 && !state.loadDraft.customerId) return toast("Choose a customer first.","error");
+          if (step === 3 && !state.loadDraft.selected.size) return toast("Choose at least one available unit.","error");
+          state.loadDraft.step = step;
+          renderPage();
+        } else if (action === "submitLoad") await submitLoad();
+        else if (action === "addAdditional" && state.loadDraft) {
+          state.loadDraft.additions.push({description:"",amount:0});
+          renderPage();
+          const index = state.loadDraft.additions.length - 1;
+          showAdditionalEditor(index);
+        } else if (action === "removeAdditional" && state.loadDraft) {
+          state.loadDraft.additions.splice(Number(target.dataset.index),1);
+          renderPage();
+        } else if (action === "reportAccount") {
+          state.reportFilters = state.reportFilters || {from:monthStart(),to:today(),account:""};
+          state.reportFilters.account = target.dataset.account;
+          await refreshPage();
+        }
+      });
+      function showAdditionalEditor(index) {
+        const draft = state.loadDraft.additions[index];
+        const body = '<div class="field"><label for="additionalDescription">Expense description</label><input class="input" id="additionalDescription" maxlength="250" placeholder="Describe this invoice charge" required></div>' +
+          '<div class="field"><label for="additionalAmount">Price for each selected unit</label><input class="input" id="additionalAmount" type="number" min="0" step="0.01" placeholder="0.00" required></div>' +
+          '<p class="quiet">This charge will be applied once to each selected unit. An administrator must approve the invoice.</p>';
+        showModal("Add an invoice expense",body,'<button class="button secondary" data-action="closeAdditional">Cancel</button><button class="button" data-action="saveAdditional" data-index="' + index + '">Add charge</button>');
       }
-      updateOnlineStatusIndicator();
-      renderDashboard();
-    }
+      document.addEventListener("click", event => {
+        const target = event.target.closest("[data-action]");
+        if (!target || !state.loadDraft) return;
+        if (target.dataset.action === "saveAdditional") {
+          const description = document.getElementById("additionalDescription").value.trim();
+          const amount = Number(document.getElementById("additionalAmount").value);
+          if (!description || !isFinite(amount) || amount < 0) { toast("Enter a description and valid amount.","error"); return; }
+          state.loadDraft.additions[Number(target.dataset.index)] = {description,amount};
+          closeModal();
+          renderPage();
+        } else if (target.dataset.action === "closeAdditional") {
+          const index = Number(document.querySelector('[data-action="saveAdditional"]')?.dataset.index);
+          if (Number.isInteger(index)) state.loadDraft.additions.splice(index,1);
+          closeModal();
+          renderPage();
+        }
+      });
 
-    function manualSyncTrigger() {
-      if (!isOnline) return alert("System is currently offline.");
-      triggerSyncQueueProcess();
-      fetchLiveData();
-    }
-
-    setInterval(() => { 
-      if (isOnline) {
-        triggerSyncQueueProcess();
-        fetchLiveData();
+      function closeSidebar() {
+        document.getElementById("sidebar").classList.remove("open");
+        document.getElementById("mobileBackdrop").classList.remove("open");
       }
-    }, 30000);
-
-    // Window resize handler for canvas redrawing
-    window.addEventListener('resize', () => {
-      const activeView = document.querySelector('.view-section.active');
-      if (activeView && activeView.id === 'viewReports') {
-        applyReportFilters();
+      document.getElementById("mobileBackdrop").addEventListener("click",closeSidebar);
+      document.addEventListener("keydown",event => {
+        if (event.key === "Escape" && state.modalOpen) closeModal();
+      });
+      function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) return;
+        navigator.serviceWorker.register(WEB_APP_URL + "?asset=sw").catch(() => {
+          // Apps Script may serve its output through a redirected origin; install steps remain available.
+        });
       }
-    });
-
-    // ------------------------------------------------------------------------
-    // ENTRY POINT
-    // ------------------------------------------------------------------------
-    window.addEventListener("DOMContentLoaded", async () => {
-      await initIndexedDB();
-      updateOnlineStatusIndicator();
-      
-      const loggedIn = checkPersistedUser();
-      if (!loggedIn) {
-        document.getElementById("loginOverlay").classList.remove("hidden");
-      } else {
-        await fetchLiveData();
+      function maybeAskToInstall() {
+        if (localStorage.getItem("enican-install-dismissed")) return;
+        const offerWhenReady = () => {
+          if (!state.user || state.section !== "dashboard" || window.matchMedia("(display-mode: standalone)").matches) return;
+          if (state.modalOpen) {
+            setTimeout(offerWhenReady,3000);
+            return;
+          }
+          showInstallHelp();
+        };
+        setTimeout(offerWhenReady,8000);
       }
-      renderDashboard();
-    });
-  </script>
-
-</body>
+      function showInstallHelp() {
+        const canPrompt = !!state.installPrompt;
+        const instructions = /iphone|ipad|ipod/i.test(navigator.userAgent)
+          ? '<ol><li>Open this page in Safari.</li><li>Tap the Share button.</li><li>Choose <b>Add to Home Screen</b>, then tap Add.</li></ol>'
+          : '<ol><li>Open this page in Chrome.</li><li>Tap the menu button.</li><li>Choose <b>Install app</b> or <b>Add to Home screen</b>.</li></ol>';
+        showModal("Add " + APP_NAME + " to your home screen",'<div class="install-card"><h3>Quick access from your phone</h3>' +
+          '<p>Install availability depends on the browser and the Google Apps Script host.</p>' +
+          (canPrompt ? '<p>Use the browser install action, or follow these steps:</p>' : '<p>If the install option is not shown, follow these steps:</p>') + instructions + '</div>',
+          '<button class="button ghost" data-action="dismissInstall">Not now</button>' +
+          (canPrompt ? '<button class="button" data-action="installApp">Install app</button>' : '<button class="button" data-action="dismissInstall">Got it</button>'));
+      }
+      document.addEventListener("click", async event => {
+        const target = event.target.closest("[data-action]");
+        if (!target) return;
+        if (target.dataset.action === "dismissInstall") {
+          localStorage.setItem("enican-install-dismissed","1");
+          closeModal();
+        } else if (target.dataset.action === "installApp" && state.installPrompt) {
+          state.installPrompt.prompt();
+          await state.installPrompt.userChoice;
+          state.installPrompt = null;
+          localStorage.setItem("enican-install-dismissed","1");
+          closeModal();
+        }
+      });
+      initialize();
+    </script>
+  </body>
 </html>
