@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#123b84">
     <meta name="description" content="Tank, boiler and grabber operations">
     <link rel="manifest" id="app-manifest">
-    <title><?= appName ?> Operations</title>
+    <title><?= appName ?></title>
     <style>
       :root {
         --navy: #123b84;
@@ -123,6 +123,22 @@
       .refresh-button:hover { color: white; border-color: var(--blue); background: var(--blue); }
       .refresh-button.spinning { animation: spin .65s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
+      .api-loader {
+        position: fixed; z-index: 200; top: 0; left: 0; width: 100%; height: 3px;
+        overflow: hidden; background: rgba(21, 85, 192, .12); pointer-events: none;
+      }
+      .api-loader::after {
+        content: ""; position: absolute; top: 0; left: -38%; width: 38%; height: 100%;
+        border-radius: 3px; background: linear-gradient(90deg, #4e8df0, #123b84);
+        animation: api-progress 1.05s ease-in-out infinite;
+      }
+      @keyframes api-progress {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(365%); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .api-loader::after { animation-duration: 2.2s; }
+      }
       .content { width: min(100%, 1440px); margin: auto; padding: 28px 30px 46px; }
       .page-head { display: flex; align-items: flex-end; gap: 16px; margin-bottom: 20px; }
       .page-head > div:first-child { flex: 1; }
@@ -383,6 +399,9 @@
         <footer class="modal-footer" id="modalFooter"></footer>
       </section>
     </div>
+    <div id="apiLoader" class="api-loader" role="status" aria-label="Loading data" aria-live="polite" hidden>
+      <span class="sr-only">Waiting for ENICAN MINES data...</span>
+    </div>
     <div id="toastStack" class="toast-stack" aria-live="polite"></div>
 
     <script>
@@ -394,7 +413,8 @@
       const state = {
         token: "", user: null, section: "dashboard", data: null, timer: null, inFlight: false, refreshing: false,
         queue: [], loadDraft: null, reportFilters: null, modalOpen: false, seenPending: new Set(),
-        installPrompt: null, reportBusy: false, customerFilter: ""
+        installPrompt: null, reportBusy: false, customerFilter: "",
+        pendingApiCalls: 0, apiLoaderTimer: null
       };
       window.addEventListener("beforeinstallprompt",event => {
         event.preventDefault();
@@ -450,36 +470,51 @@
       }
 
       function enqueue(name, args) {
+        state.pendingApiCalls += 1;
+        if (state.pendingApiCalls === 1) {
+          state.apiLoaderTimer = setTimeout(() => {
+            if (state.pendingApiCalls) document.getElementById("apiLoader").hidden = false;
+          },140);
+        }
         return new Promise((resolve, reject) => {
           state.queue.push({name,args,resolve,reject});
           drainQueue();
         });
       }
+      function finishApiCall() {
+        state.pendingApiCalls = Math.max(0,state.pendingApiCalls - 1);
+        if (!state.pendingApiCalls) {
+          if (state.apiLoaderTimer) clearTimeout(state.apiLoaderTimer);
+          state.apiLoaderTimer = null;
+          document.getElementById("apiLoader").hidden = true;
+        }
+      }
+      function settleQueueItem(item, result, error) {
+        state.inFlight = false;
+        finishApiCall();
+        if (error) item.reject(error);
+        else if (result && result.ok === false) item.reject(new Error(result.error || "The request failed."));
+        else item.resolve(result);
+        drainQueue();
+      }
       function drainQueue() {
         if (state.inFlight || !state.queue.length) return;
         state.inFlight = true;
         const item = state.queue.shift();
-        let runner = google.script.run
-          .withSuccessHandler(result => {
-            state.inFlight = false;
-            if (result && result.ok === false) item.reject(new Error(result.error || "The request failed."));
-            else item.resolve(result);
-            drainQueue();
-          })
-          .withFailureHandler(error => {
-            state.inFlight = false;
-            item.reject(new Error(error && error.message ? error.message : "The server could not complete the request."));
-            drainQueue();
-          });
         try {
+          const runner = google.script.run
+            .withSuccessHandler(result => {
+              settleQueueItem(item,result,null);
+            })
+            .withFailureHandler(error => {
+              settleQueueItem(item,null,new Error(error && error.message ? error.message : "The server could not complete the request."));
+            });
           if (item.name === "login") runner.login(item.args.username,item.args.password);
           else if (item.name === "bootstrapAdmin") runner.bootstrapAdmin(item.args.code,item.args.username,item.args.password);
           else if (item.name === "getSetupStatus") runner.getSetupStatus();
           else runner.api(state.token,item.name,item.args || {});
         } catch (error) {
-          state.inFlight = false;
-          item.reject(error);
-          drainQueue();
+          settleQueueItem(item,null,error);
         }
       }
       async function rpc(name, payload) {
