@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0641ab">
-<title>Enican Mines — Cyanidation Tank Management System</title>
+<title>Management System</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="logo192.png">
 <style>
@@ -77,6 +77,8 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: 8px; }
 
 /* ---------- HEADER ---------- */
+.header-left { display:flex; align-items:center; gap:14px; min-width:0; }
+.system-brand { font-size:15px; font-weight:800; letter-spacing:.5px; white-space:nowrap; border-right:1px solid rgba(255,255,255,.25); padding-right:14px; }
 .header { background: var(--navy); color: var(--white); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 10px rgba(0,0,0,.15); }
 .header-title { font-size: 17px; font-weight: 700; }
 .header-sub { font-size: 11px; opacity: .8; margin-top: 2px; }
@@ -251,8 +253,8 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-logo">EM</div>
-    <h1>Enican Mines</h1>
-    <p>Management System</p>
+    <h1 id="loginSystemName">Loading...</h1>
+    <p id="loginSystemSubtitle">Management System</p>
     <div class="field">
       <label>Username</label>
       <input id="loginUser" type="text" autocomplete="username" placeholder="Enter username">
@@ -268,9 +270,12 @@ input, select, textarea { font-family: inherit; font-size: 16px; }
 <!-- ================= APP ================= -->
 <div id="app" class="app hidden">
   <div class="header">
-    <div>
-      <div class="header-title" id="headerTitle">Dashboard</div>
-      <div class="header-sub" id="headerSub">Loading...</div>
+    <div class="header-left">
+      <div class="system-brand" id="systemBrand">Loading...</div>
+      <div>
+        <div class="header-title" id="headerTitle">Dashboard</div>
+        <div class="header-sub" id="headerSub">Loading...</div>
+      </div>
     </div>
     <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()" title="Refresh">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
@@ -300,7 +305,8 @@ const state = {
   filter: { from: '', to: '', account: 'all' },
   driverTab: 'trips',
   // Track "user has unsaved work on this page" so auto-refresh never wipes it
-  dirty: { load: false, driver: false }
+  dirty: { load: false, driver: false },
+  systemName: 'Loading...'
 };
 
 // ---------- DRAFT PERSISTENCE (survives refresh / auto-refresh) ----------
@@ -344,6 +350,27 @@ function loadDraft() {
 }
 function clearDraft() {
   try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+}
+
+// ============ SYSTEM CONFIG ============
+async function loadSystemConfig() {
+  try {
+    const res = await apiGet({ action: 'systemConfig' }, { silent: true });
+    if (res && res.success && res.config) {
+      state.systemName = res.config.systemName || 'System';
+      applySystemName();
+    }
+  } catch (e) {
+    // Configuration is cosmetic; the application can still proceed.
+  }
+}
+function applySystemName() {
+  const name = state.systemName || 'System';
+  const brand = document.getElementById('systemBrand');
+  const loginName = document.getElementById('loginSystemName');
+  if (brand) brand.textContent = name;
+  if (loginName) loginName.textContent = name;
+  document.title = name + ' — Management System';
 }
 
 // ============ API ============
@@ -772,7 +799,13 @@ async function renderLoad(el, type) {
     apiGet({ action: 'dashboard' })
   ]);
   const customers = custRes.customers || [];
-  const allExpenses = (expRes.expenses || []).filter(e => !e.assetType || String(e.assetType).toLowerCase() === type);
+  // Expenses are ALWAYS sourced from the backend. The frontend never owns a
+  // hardcoded expense catalogue. Only active expenses assigned to this asset
+  // type are allowed into the loading workflow.
+  const allExpenses = (expRes.expenses || []).filter(e =>
+    String(e.active).toUpperCase() === 'TRUE' &&
+    String(e.assetType || '').toLowerCase() === type
+  );
   const assets = (type === 'boiler' ? dashRes.boilers.items : dashRes.tanks.items).filter(a => String(a.status).toLowerCase() === 'vacant');
 
   // Restore any saved draft
@@ -783,11 +816,33 @@ async function renderLoad(el, type) {
     : state.selectedCustomer;
   const preservedAssets = sameType && Array.isArray(draft.selectedAssets) ? draft.selectedAssets : (state.selectedAssets || []);
   const preservedInvoice = sameType && draft.invoiceNumber ? draft.invoiceNumber : (state.invoiceNumber || '');
-  const preservedExpenses = (sameType && Array.isArray(draft.selectedExpenses) && draft.selectedExpenses.length > 0)
-    ? draft.selectedExpenses
-    : (state.selectedExpenses && state.selectedExpenses.length > 0 && sameType
-      ? state.selectedExpenses
-      : allExpenses.map(e => ({ expenseId: e.id, expenseName: e.name, amountPerAsset: Number(e.amount), description: '' })));
+  const backendExpenseMap = {};
+  allExpenses.forEach(e => { backendExpenseMap[String(e.id)] = e; });
+  const hasDraftExpenseState = sameType && Array.isArray(draft.selectedExpenses);
+  const hasCurrentExpenseState = sameType && Array.isArray(state.selectedExpenses) && state.selectedExpenses.length > 0;
+  const sourceExpenses = hasDraftExpenseState ? draft.selectedExpenses : (hasCurrentExpenseState ? state.selectedExpenses : null);
+  const validSavedExpenses = Array.isArray(sourceExpenses)
+    ? sourceExpenses.filter(e => e && e.expenseId && backendExpenseMap[String(e.expenseId)])
+    .map(e => {
+      const backend = backendExpenseMap[String(e.expenseId)];
+      return {
+        expenseId: backend.id,
+        expenseName: backend.name,
+        amountPerAsset: Number(e.amountPerAsset),
+        description: e.description || '',
+        _pendingPriceChange: e._pendingPriceChange || null
+      };
+    })
+    : [];
+  const preservedExpenses = sourceExpenses !== null
+    ? validSavedExpenses
+    : allExpenses.map(e => ({
+        expenseId: e.id,
+        expenseName: e.name,
+        amountPerAsset: Number(e.amount),
+        description: '',
+        _pendingPriceChange: null
+      }));
 
   el.innerHTML = `
     <div class="steps">
@@ -823,7 +878,6 @@ async function renderLoad(el, type) {
     <div class="card ${preservedAssets.length > 0 ? '' : 'hidden'}" id="step3Card">
       <div class="card-title">Step 4 · Expenses</div>
       <div id="expenseList"></div>
-      <button class="btn btn-outline" style="margin-top:10px" onclick="showAddExpense()">+ Add Additional Expense</button>
       <div class="data-row total" style="margin-top:12px"><span class="lbl">Total</span><span class="val" id="loadTotal">$0.00</span></div>
       <button class="btn" style="margin-top:12px" onclick="submitLoad('${type}', this)">Create Invoice</button>
     </div>
@@ -967,15 +1021,7 @@ function changeExpensePrice(i, val) {
   updateLoadTotal();
 }
 function removeExpense(i) { state.selectedExpenses.splice(i, 1); saveDraft(); renderExpenses(); }
-function showAddExpense() {
-  const name = prompt('Expense name:');
-  if (!name) return;
-  const amt = prompt('Amount per asset:', '0');
-  if (amt === null) return;
-  state.selectedExpenses.push({ expenseId: '', expenseName: name, amountPerAsset: Number(amt), description: '' });
-  saveDraft();
-  renderExpenses();
-}
+
 function updateLoadTotal() {
   const qty = state.selectedAssets.length || 0;
   const total = state.selectedExpenses.reduce((s, e) => s + Number(e.amountPerAsset) * qty, 0);
@@ -1136,7 +1182,7 @@ function generateReceiptPDF(receipt) {
       th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e7f0; font-size: 12px; }
       th { background: #f4f6fa; }
     </style></head><body>
-      <h1>Enican Mines</h1>
+      <h1>${state.systemName}</h1>
       <div class="sub">Payment Receipt</div>
       <div class="row"><span>Receipt No.</span><span>${receipt.paymentId}</span></div>
       <div class="row"><span>Date</span><span>${new Date(receipt.date).toLocaleString()}</span></div>
@@ -1176,7 +1222,7 @@ async function downloadStatement(sessionId) {
       th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e7f0; font-size: 12px; }
       th { background: #f4f6fa; }
     </style></head><body>
-      <h1>Enican Mines</h1>
+      <h1>${state.systemName}</h1>
       <div class="sub">Client Statement</div>
       <div class="row"><span>Customer</span><span>${session.customerName}</span></div>
       <div class="row"><span>Phone</span><span>${customer ? customer.phone : '-'}</span></div>
@@ -1749,7 +1795,7 @@ function showInstallBanner() {
   const banner = document.createElement('div');
   banner.className = 'install-banner';
   banner.innerHTML = `
-    <div style="flex:1;font-size:13px">Install Enican Mines for quick access</div>
+    <div style="flex:1;font-size:13px">Install ${state.systemName} for quick access</div>
     <button class="btn" onclick="installPWA()">Install</button>
     <button style="background:transparent;color:white;font-size:18px;width:30px" onclick="this.parentElement.remove()">×</button>
   `;
@@ -1763,7 +1809,8 @@ async function installPWA() {
 }
 
 // ============ INIT ============
-(function init() {
+(async function init() {
+  await loadSystemConfig();
   const saved = localStorage.getItem('enican_user');
   if (saved) {
     try {
