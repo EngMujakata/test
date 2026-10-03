@@ -1434,7 +1434,7 @@ async function renderDriver(el) {
   const trip = isTypingTrip ? {
     customerId: (document.getElementById('tripCustomer')||{}).value || dt.customerId || '',
     trips: (document.getElementById('tripCount')||{}).value || dt.trips || '1',
-    rate: (document.getElementById('tripRate')||{}).value || dt.rate || '50',
+    rate: (document.getElementById('tripRate')||{}).value || dt.rate || '200',
     date: (document.getElementById('tripDate')||{}).value || dt.date || new Date().toISOString().slice(0,10),
     notes: (document.getElementById('tripNotes')||{}).value || dt.notes || ''
   } : {
