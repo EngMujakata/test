@@ -298,6 +298,7 @@ const state = {
   selectedExpenses: [],
   invoiceNumber: '',
   filter: { from: '', to: '', account: 'all' },
+  driverTab: 'trips',
   // Track "user has unsaved work on this page" so auto-refresh never wipes it
   dirty: { load: false, driver: false }
 };
@@ -346,10 +347,16 @@ function clearDraft() {
 }
 
 // ============ API ============
-async function apiGet(params) {
+async function apiGet(params, options) {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(WEBAPP_URL + '?' + qs);
-  return await res.json();
+  const showApiLoader = !state.loading && !(options && options.silent);
+  if (showApiLoader) showLoader('Loading...');
+  try {
+    const res = await fetch(WEBAPP_URL + '?' + qs);
+    return await res.json();
+  } finally {
+    if (showApiLoader) hideLoader();
+  }
 }
 async function apiPost(body) {
   const res = await fetch(WEBAPP_URL, {
@@ -357,11 +364,33 @@ async function apiPost(body) {
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body)
   });
-  return await res.json();
+  const result = await res.json();
+  if (result && result.success && body && body.idempotencyKey) clearUid(body.idempotencyKey);
+  return result;
 }
-// generate a globally-unique client-side idempotency token
-function uid(prefix) {
-  return (prefix || 'W') + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+// Persistent client idempotency tokens: if the network drops after the
+// server has written successfully, the next click reuses the same key and
+// the backend safely replays the original result instead of duplicating it.
+function uid(prefix, scope) {
+  const p = prefix || 'W';
+  const slot = p + ':' + String(scope || 'default');
+  const storageKey = 'enican_idem_' + slot;
+  try {
+    const existing = localStorage.getItem(storageKey);
+    if (existing) return existing;
+    const id = p + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem(storageKey, id);
+    return id;
+  } catch (e) {
+    return p + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  }
+}
+function clearUid(key) {
+  if (!key) return;
+  try {
+    const p = String(key).split('-')[0];
+    Object.keys(localStorage).filter(k => k.indexOf('enican_idem_' + p + ':') === 0).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
 }
 
 // ============ LOADER ============
@@ -494,29 +523,62 @@ const PAGE_TITLES = {
   settings: 'Settings'
 };
 
+// ============ FORM PRESERVATION ============
+// Capture every editable field before a page is re-rendered. This prevents
+// auto-sync/manual refresh/navigation from deleting text the user is typing.
+function captureEditableState() {
+  const root = document.getElementById('pageContent');
+  if (!root) return {};
+  const values = {};
+  root.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+    if (el.type === 'button' || el.type === 'submit') return;
+    values[el.id] = {
+      value: el.value,
+      checked: !!el.checked,
+      type: el.type
+    };
+  });
+  return values;
+}
+function restoreEditableState(values) {
+  if (!values) return;
+  Object.keys(values).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const v = values[id];
+    if (v.type === 'checkbox' || v.type === 'radio') el.checked = v.checked;
+    else el.value = v.value;
+  });
+}
+function pageHasEditableWork() {
+  const root = document.getElementById('pageContent');
+  if (!root) return false;
+  const active = document.activeElement;
+  if (active && root.contains(active) && ['INPUT','SELECT','TEXTAREA'].includes(active.tagName)) return true;
+  // Form pages should not auto-re-render while they contain an editable form.
+  // This is intentionally lightweight and guarantees typed data is never wiped.
+  return ['loadTank','loadBoiler','driver','settings'].includes(state.page) &&
+    root.querySelectorAll('input, select, textarea').length > 0;
+}
+
 // ============ AUTO REFRESH ============
 function startAutoRefresh() {
   stopAutoRefresh();
   state.refreshTimer = setInterval(() => {
-    if (document.visibilityState === 'visible') {
-      // NEVER wipe user's in-progress work
-      const onLoadPage = (state.page === 'loadTank' || state.page === 'loadBoiler');
-      const hasLoadWork = onLoadPage && (state.selectedCustomer || state.selectedAssets.length > 0 || (state.invoiceNumber || '').trim() !== '');
-      // also skip driver page if the user is typing
-      const onDriver = state.page === 'driver';
-      const focusEl = document.activeElement;
-      const typingDriver = onDriver && focusEl && (focusEl.tagName === 'INPUT' || focusEl.tagName === 'SELECT' || focusEl.tagName === 'TEXTAREA');
-      if (hasLoadWork || typingDriver) return;
-      loadPage(true);
-    }
-  }, 5000);
+    if (document.visibilityState !== 'visible') return;
+    if (state.loading) return;
+    // Never auto-sync over an active form. All form pages are protected,
+    // including driver, so names/text/amounts cannot disappear mid-entry.
+    if (pageHasEditableWork()) return;
+    loadPage(true);
+  }, 10000);
 }
 function stopAutoRefresh() { if (state.refreshTimer) clearInterval(state.refreshTimer); state.refreshTimer = null; }
 function manualRefresh() {
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('spinning');
   setTimeout(() => btn.classList.remove('spinning'), 800);
-  loadPage();
+  loadPage(false);
 }
 
 // ============ PAGE LOADER ============
@@ -524,6 +586,10 @@ async function loadPage(silent) {
   if (state.loading) return;
   state.loading = true;
   const el = document.getElementById('pageContent');
+  const preservedFields = captureEditableState();
+  // Persist active forms before any re-render as an extra safety layer.
+  if (state.page === 'loadTank' || state.page === 'loadBoiler') saveDraft();
+  if (state.page === 'driver') saveDriverDraft();
   if (!silent) {
     el.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
     showLoader('Loading ' + (PAGE_TITLES[state.page] || '...'));
@@ -538,6 +604,7 @@ async function loadPage(silent) {
     else if (state.page === 'driver') await renderDriver(el);
     else if (state.page === 'profile') await renderProfile(el);
     else if (state.page === 'settings') await renderSettings(el);
+    restoreEditableState(preservedFields);
   } catch (e) {
     el.innerHTML = '<div class="card"><p style="color:red">Error: ' + e.message + '</p></div>';
   } finally {
@@ -805,13 +872,16 @@ function filterCustomers(q) {
   renderCustomers(filtered);
 }
 
-function selectCustomer(id) {
+async function selectCustomer(id) {
   const c = state.allCustomers.find(x => String(x.id) === String(id));
+  if (!c) return;
   state.selectedCustomer = c;
   toast('Selected: ' + c.name, 'success');
   saveDraft();
   const el = document.getElementById('pageContent');
-  renderLoad(el, state.assetType);
+  await withLoader('Loading customer and assets...', async () => {
+    await renderLoad(el, state.assetType);
+  });
   setTimeout(() => {
     const s2 = document.getElementById('step2Card');
     if (s2) s2.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -925,7 +995,7 @@ async function submitLoad(type, btn) {
       expenseId: e.expenseId, expenseName: e.expenseName,
       amountPerAsset: e.amountPerAsset, description: e.description || ''
     }));
-    const idempotencyKey = uid('LOAD');
+    const idempotencyKey = uid('LOAD', state.invoiceNumber.trim());
     const res = await apiPost({
       action: 'createSession',
       idempotencyKey,
@@ -944,7 +1014,7 @@ async function submitLoad(type, btn) {
       for (const e of priceChanges) {
         await apiPost({
           action: 'updateExpensePrice',
-          idempotencyKey: uid('PP'),
+          idempotencyKey: uid('PP', (e.expenseId || e.expenseName) + ':' + e._pendingPriceChange.oldAmount + ':' + e._pendingPriceChange.newAmount),
           sessionId: res.sessionId,
           invoiceId: res.invoiceId,
           expenseId: e.expenseId,
@@ -985,7 +1055,7 @@ async function createCustomer(btn) {
   if (!name) return toast('Name required', 'error');
   setBtnLoading(btn, true);
   await withLoader('Creating customer...', async () => {
-    const res = await apiPost({ action: 'createCustomer', idempotencyKey: uid('CUST'), name, phone, address, user: state.user.username });
+    const res = await apiPost({ action: 'createCustomer', idempotencyKey: uid('CUST', phone || name), name, phone, address, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast('Customer created', 'success');
     closeModal();
@@ -1043,7 +1113,7 @@ async function submitPayment(invoiceId, sessionId, btn) {
   if (!amount || amount <= 0) return toast('Enter valid amount', 'error');
   setBtnLoading(btn, true);
   await withLoader('Recording payment...', async () => {
-    const res = await apiPost({ action: 'recordPayment', idempotencyKey: uid('PAY'), invoiceId, sessionId, amount, user: state.user.username });
+    const res = await apiPost({ action: 'recordPayment', idempotencyKey: uid('PAY', invoiceId + ':' + amount), invoiceId, sessionId, amount, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast(res.fullyPaid ? 'Fully paid. Tank emptied.' : 'Payment recorded', 'success');
     generateReceiptPDF(res.receipt);
@@ -1172,7 +1242,7 @@ async function viewPending(id) {
 async function approvePending(id, btn) {
   setBtnLoading(btn, true);
   await withLoader('Approving...', async () => {
-    const res = await apiPost({ action: 'approvePending', idempotencyKey: uid('APR'), pendingId: id, user: state.user.username });
+    const res = await apiPost({ action: 'approvePending', idempotencyKey: uid('APR', id), pendingId: id, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast('Approved', 'success');
     closeModal();
@@ -1184,7 +1254,7 @@ async function declinePending(id, btn) {
   if (!confirm('Decline? Tanks will remain empty and session will be cancelled.')) return;
   setBtnLoading(btn, true);
   await withLoader('Declining...', async () => {
-    const res = await apiPost({ action: 'declinePending', idempotencyKey: uid('DEC'), pendingId: id, user: state.user.username });
+    const res = await apiPost({ action: 'declinePending', idempotencyKey: uid('DEC', id), pendingId: id, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast('Declined', 'success');
     closeModal();
@@ -1340,8 +1410,8 @@ async function renderDriver(el) {
 
   el.innerHTML = `
     <div class="tabs">
-      <button class="tab active" onclick="driverTab('trips', this)">Log Trip</button>
-      <button class="tab" onclick="driverTab('expense', this)">Log Expense</button>
+      <button class="tab ${state.driverTab === 'trips' ? 'active' : ''}" onclick="driverTab('trips', this)">Log Trip</button>
+      <button class="tab ${state.driverTab === 'expense' ? 'active' : ''}" onclick="driverTab('expense', this)">Log Expense</button>
     </div>
     <div id="driverTabContent">
       <div class="card">
@@ -1393,28 +1463,44 @@ async function renderDriver(el) {
       </div>
     `).join('') || '<div class="empty">No expenses</div>'}
   `;
+  if (state.driverTab === 'expense') {
+    const tabBtn = el.querySelector('.tabs .tab:nth-child(2)');
+    if (tabBtn) driverTab('expense', tabBtn);
+  }
 }
 function saveDriverDraft() {
-  const trip = {
-    customerId: (document.getElementById('tripCustomer')||{}).value || '',
-    trips: (document.getElementById('tripCount')||{}).value || '',
-    rate: (document.getElementById('tripRate')||{}).value || '',
-    date: (document.getElementById('tripDate')||{}).value || '',
-    notes: (document.getElementById('tripNotes')||{}).value || ''
-  };
-  const exp = {
-    desc: (document.getElementById('expDesc')||{}).value || '',
-    amt: (document.getElementById('expAmt')||{}).value || '',
-    date: (document.getElementById('expDate')||{}).value || ''
-  };
   try {
     const d = loadDraft() || {};
-    d.driverTrip = trip;
-    d.driverExpense = exp;
+    const tripCustomer = document.getElementById('tripCustomer');
+    const tripCount = document.getElementById('tripCount');
+    const tripRate = document.getElementById('tripRate');
+    const tripDate = document.getElementById('tripDate');
+    const tripNotes = document.getElementById('tripNotes');
+    if (tripCustomer || tripCount || tripRate || tripDate || tripNotes) {
+      d.driverTrip = {
+        customerId: tripCustomer ? tripCustomer.value : (d.driverTrip || {}).customerId || '',
+        trips: tripCount ? tripCount.value : (d.driverTrip || {}).trips || '',
+        rate: tripRate ? tripRate.value : (d.driverTrip || {}).rate || '',
+        date: tripDate ? tripDate.value : (d.driverTrip || {}).date || '',
+        notes: tripNotes ? tripNotes.value : (d.driverTrip || {}).notes || ''
+      };
+    }
+    const expDesc = document.getElementById('expDesc');
+    const expAmt = document.getElementById('expAmt');
+    const expDate = document.getElementById('expDate');
+    if (expDesc || expAmt || expDate) {
+      d.driverExpense = {
+        desc: expDesc ? expDesc.value : (d.driverExpense || {}).desc || '',
+        amt: expAmt ? expAmt.value : (d.driverExpense || {}).amt || '',
+        date: expDate ? expDate.value : (d.driverExpense || {}).date || ''
+      };
+    }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
   } catch (e) {}
 }
 function driverTab(tab, btn) {
+  state.driverTab = tab;
+  saveDriverDraft();
   document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   const el = document.getElementById('driverTabContent');
@@ -1446,7 +1532,7 @@ async function submitTrip(btn) {
   setBtnLoading(btn, true);
   await withLoader('Logging trip...', async () => {
     const res = await apiPost({
-      action: 'logTrip', idempotencyKey: uid('TRIP'),
+      action: 'logTrip', idempotencyKey: uid('TRIP', customerId + ':' + trips + ':' + rate + ':' + tripDate),
       driverUsername: state.user.username,
       customerId, customerName: customer ? customer.name : '', trips, amountPerTrip: rate, tripDate, notes
     });
@@ -1466,7 +1552,7 @@ async function submitDriverExpense(btn) {
   setBtnLoading(btn, true);
   await withLoader('Logging expense...', async () => {
     const res = await apiPost({
-      action: 'logDriverExpense', idempotencyKey: uid('DEXP'),
+      action: 'logDriverExpense', idempotencyKey: uid('DEXP', description + ':' + amount + ':' + expenseDate),
       driverUsername: state.user.username,
       description, amount, expenseDate
     });
@@ -1598,7 +1684,7 @@ async function renderSettings(el) {
 async function changeUserRole(username, newRole) {
   if (!confirm(`Change @${username} to role "${newRole}"?`)) return loadPage();
   await withLoader('Updating role...', async () => {
-    const res = await apiPost({ action: 'updateUserRole', idempotencyKey: uid('ROLE'), username, newRole, user: state.user.username });
+    const res = await apiPost({ action: 'updateUserRole', idempotencyKey: uid('ROLE', username + ':' + newRole), username, newRole, user: state.user.username });
     if (!res.success) return toast(res.error, 'error');
     toast('Role updated', 'success');
     loadPage();
@@ -1612,7 +1698,7 @@ async function addNewExpense(btn) {
   if (!amount || amount <= 0) return toast('Amount required', 'error');
   setBtnLoading(btn, true);
   await withLoader('Adding expense...', async () => {
-    const res = await apiPost({ action: 'createExpenseType', idempotencyKey: uid('EXP'), name, amount, assetType, user: state.user.username });
+    const res = await apiPost({ action: 'createExpenseType', idempotencyKey: uid('EXP', name + ':' + amount + ':' + assetType), name, amount, assetType, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast('Expense added', 'success');
     loadPage();
@@ -1628,7 +1714,7 @@ async function createUser(btn) {
   if (!fullName || !username || !password) return toast('Fill all fields', 'error');
   setBtnLoading(btn, true);
   await withLoader('Creating user...', async () => {
-    const res = await apiPost({ action: 'createUser', idempotencyKey: uid('USER'), username, password, role, fullName, user: state.user.username });
+    const res = await apiPost({ action: 'createUser', idempotencyKey: uid('USER', username), username, password, role, fullName, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast('User created', 'success');
     loadPage();
