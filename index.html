@@ -301,6 +301,7 @@ const state = {
   selectedCustomer: null,
   selectedAssets: [],
   selectedExpenses: [],
+  selectedOurExpenses: [],
   invoiceNumber: '',
   filter: { from: '', to: '', account: 'all' },
   driverTab: 'trips',
@@ -319,6 +320,7 @@ function saveDraft() {
       customerName: state.selectedCustomer ? state.selectedCustomer.name : '',
       customerPhone: state.selectedCustomer ? state.selectedCustomer.phone : '',
       selectedAssets: state.selectedAssets || [],
+      selectedOurExpenses: (state.selectedOurExpenses || []).map(e => ({ id:e.id, name:e.name, amountPerUnit:e.amountPerUnit })),
       selectedExpenses: (state.selectedExpenses || []).map(e => ({
         expenseId: e.expenseId, expenseName: e.expenseName, amountPerAsset: e.amountPerAsset, description: e.description,
         _pendingPriceChange: e._pendingPriceChange || null
@@ -530,6 +532,8 @@ function navigate(page) {
     // Leaving load workspace fully — reset staged work
     state.selectedCustomer = null;
     state.selectedAssets = [];
+    state.selectedExpenses = [];
+    state.selectedOurExpenses = [];
     state.invoiceNumber = '';
     clearDraft();
   }
@@ -779,10 +783,14 @@ async function viewSession(id) {
     <div class="data-row"><span class="lbl">Phone</span><span class="val">${customer ? customer.phone : '-'}</span></div>
     <div class="data-row"><span class="lbl">Invoice #</span><span class="val">${session.invoiceNumber || '-'}</span></div>
     <div class="data-row"><span class="lbl">Assets</span><span class="val">${session.assetIds}</span></div>
+    <div class="data-row"><span class="lbl">Created by</span><span class="val">${session.createdBy || '-'}</span></div>
+    <div class="data-row"><span class="lbl">Completed by</span><span class="val">${session.completedBy || '-'}</span></div>
     <div class="data-row"><span class="lbl">Days Left</span><span class="val">${daysLeft > 0 ? daysLeft + ' days' : 'Due'}</span></div>
     <div class="section-title" style="margin:14px 0 6px">Invoice Items</div>
     ${items.map(i => `<div class="data-row"><span class="lbl">${i.expenseName} × ${i.quantity}</span><span class="val">$${Number(i.total).toFixed(2)}</span></div>`).join('')}
     <div class="data-row total"><span class="lbl">Total</span><span class="val">$${Number(invoice.totalAmount).toFixed(2)}</span></div>
+    <div class="section-title" style="margin:14px 0 6px">Internal Cost (not on invoice)</div>
+    <div class="data-row"><span class="lbl">Our session cost</span><span class="val">$${Number(session.ourExpensesTotal||0).toFixed(2)}</span></div>
     <div class="data-row"><span class="lbl">Paid</span><span class="val">$${Number(invoice.paidAmount).toFixed(2)}</span></div>
     <div class="data-row total"><span class="lbl">Balance Due</span><span class="val" style="color:${Number(invoice.balance)>0?'#dc2626':'#16a34a'}">$${Number(invoice.balance).toFixed(2)}</span></div>
     <button class="btn btn-outline" style="margin-top:14px" onclick="downloadStatement('${session.id}')">Download Statement</button>
@@ -793,19 +801,18 @@ async function viewSession(id) {
 // ============ LOAD WORKSPACE ============
 async function renderLoad(el, type) {
   document.getElementById('headerSub').textContent = (type === 'boiler' ? 'Boiler' : 'Tank') + ' loading';
-  const [custRes, expRes, dashRes] = await Promise.all([
+  const [custRes, expRes, ourExpRes, dashRes] = await Promise.all([
     apiGet({ action: 'listCustomers' }),
     apiGet({ action: 'expenseTypes', assetType: type }),
+    apiGet({ action: 'ourExpenseTypes', assetType: type }),
     apiGet({ action: 'dashboard' })
   ]);
   const customers = custRes.customers || [];
   // Expenses are ALWAYS sourced from the backend. The frontend never owns a
   // hardcoded expense catalogue. Only active expenses assigned to this asset
   // type are allowed into the loading workflow.
-  const allExpenses = (expRes.expenses || []).filter(e =>
-    String(e.active).toUpperCase() === 'TRUE' &&
-    String(e.assetType || '').toLowerCase() === type
-  );
+  const allExpenses = (expRes.expenses || []).filter(e => String(e.active).toUpperCase() === 'TRUE' && String(e.assetType || '').toLowerCase() === type);
+  const allOurExpenses = (ourExpRes.expenses || []).filter(e => String(e.active).toUpperCase() === 'TRUE' && String(e.assetType || '').toLowerCase() === type);
   const assets = (type === 'boiler' ? dashRes.boilers.items : dashRes.tanks.items).filter(a => String(a.status).toLowerCase() === 'vacant');
 
   // Restore any saved draft
@@ -878,7 +885,10 @@ async function renderLoad(el, type) {
     <div class="card ${preservedAssets.length > 0 ? '' : 'hidden'}" id="step3Card">
       <div class="card-title">Step 4 · Expenses</div>
       <div id="expenseList"></div>
-      <div class="data-row total" style="margin-top:12px"><span class="lbl">Total</span><span class="val" id="loadTotal">$0.00</span></div>
+      <div class="section-title" style="margin:16px 0 8px">Our Internal Expenses <span style="font-size:11px;color:#8a94a6;font-weight:400">(not charged to client)</span></div>
+      <div id="ourExpenseList"></div>
+      <div class="data-row" style="margin-top:8px"><span class="lbl">Our Cost for this Session</span><span class="val" id="ourExpenseTotal">$0.00</span></div>
+      <div class="data-row total" style="margin-top:12px"><span class="lbl">Client Invoice Total</span><span class="val" id="loadTotal">$0.00</span></div>
       <button class="btn" style="margin-top:12px" onclick="submitLoad('${type}', this)">Create Invoice</button>
     </div>
   `;
@@ -886,6 +896,7 @@ async function renderLoad(el, type) {
   state.selectedCustomer = preservedCustomer;
   state.selectedAssets = preservedAssets;
   state.selectedExpenses = preservedExpenses;
+  state.selectedOurExpenses = allOurExpenses.map(e => ({ id:e.id, name:e.name, amountPerUnit:Number(e.amountPerUnit)||0, assetType:e.assetType }));
   state.invoiceNumber = preservedInvoice;
   state.availableAssets = assets;
   state.allCustomers = customers;
@@ -900,6 +911,7 @@ async function renderLoad(el, type) {
   renderCustomers(customers);
   renderAssets(assets);
   renderExpenses();
+  renderOurExpenses();
   updateLoadTotal();
 }
 
@@ -998,7 +1010,7 @@ function renderExpenses() {
     <div class="check-row">
       <div class="label">
         <div style="font-weight:600;color:#0641ab">${e.expenseName}</div>
-        <div style="font-size:11px;color:#8a94a6">${e.description || ''}</div>
+        <div style="font-size:11px;color:#8a94a6">${e.description || ''}${e._pendingPriceChange ? ' · <span style="color:#d97706">Price change pending approval</span>' : ''}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <input type="number" value="${e.amountPerAsset}" min="0" step="0.01" style="width:80px;padding:6px;border:1px solid #e2e7f0;border-radius:6px;text-align:right" onchange="changeExpensePrice(${i}, this.value)">
@@ -1010,11 +1022,18 @@ function renderExpenses() {
   updateLoadTotal();
 }
 
+function renderOurExpenses() {
+  const list=document.getElementById('ourExpenseList'); if(!list) return;
+  const qty=state.selectedAssets.length||1;
+  const rows=state.selectedOurExpenses||[];
+  list.innerHTML=rows.length ? rows.map(e=>`<div class="check-row"><div class="label"><div style="font-weight:600;color:#374151">${e.name}</div><div style="font-size:11px;color:#8a94a6">$${Number(e.amountPerUnit).toFixed(2)} per ${String(e.assetType||state.assetType).toUpperCase()} × ${qty}</div></div><div style="font-weight:600;color:#dc2626">-$${(Number(e.amountPerUnit)*qty).toFixed(2)}</div></div>`).join('') : '<div class="empty">No internal expenses configured for this account</div>';
+}
+
 function changeExpensePrice(i, val) {
   const newAmt = Number(val);
   const oldAmt = state.selectedExpenses[i].amountPerAsset;
   state.selectedExpenses[i].amountPerAsset = newAmt;
-  if (newAmt !== oldAmt && state.user.role === 'loader') {
+  if (newAmt !== oldAmt && state.user.role !== 'admin') {
     state.selectedExpenses[i]._pendingPriceChange = { oldAmount: oldAmt, newAmount: newAmt };
   }
   saveDraft();
@@ -1024,7 +1043,12 @@ function removeExpense(i) { state.selectedExpenses.splice(i, 1); saveDraft(); re
 
 function updateLoadTotal() {
   const qty = state.selectedAssets.length || 0;
-  const total = state.selectedExpenses.reduce((s, e) => s + Number(e.amountPerAsset) * qty, 0);
+  const total = state.selectedExpenses.reduce((s, e) => {
+    const approvedAmount = e._pendingPriceChange && state.user.role !== 'admin' ? Number(e._pendingPriceChange.oldAmount) : Number(e.amountPerAsset);
+    return s + approvedAmount * qty;
+  }, 0);
+  const ourTotal = (state.selectedOurExpenses || []).reduce((s,e) => s + Number(e.amountPerUnit) * qty, 0);
+  const oe = document.getElementById('ourExpenseTotal'); if (oe) oe.textContent = '$' + ourTotal.toFixed(2);
   const el = document.getElementById('loadTotal');
   if (el) el.textContent = '$' + total.toFixed(2);
 }
@@ -1051,16 +1075,17 @@ async function submitLoad(type, btn) {
       assetIds: state.selectedAssets,
       assetType: type,
       expenses,
+      ourExpenses: state.selectedOurExpenses || [],
       user: state.user.username
     });
     if (!res.success) { toast(res.error, 'error'); setBtnLoading(btn, false); return; }
 
     const priceChanges = state.selectedExpenses.filter(e => e._pendingPriceChange);
-    if (state.user.role === 'loader' && priceChanges.length > 0) {
+    if (state.user.role !== 'admin' && priceChanges.length > 0) {
       for (const e of priceChanges) {
         await apiPost({
           action: 'updateExpensePrice',
-          idempotencyKey: uid('PP', (e.expenseId || e.expenseName) + ':' + e._pendingPriceChange.oldAmount + ':' + e._pendingPriceChange.newAmount),
+          idempotencyKey: uid('PP', res.sessionId + ':' + (e.expenseId || e.expenseName) + ':' + e._pendingPriceChange.oldAmount + ':' + e._pendingPriceChange.newAmount),
           sessionId: res.sessionId,
           invoiceId: res.invoiceId,
           expenseId: e.expenseId,
@@ -1078,6 +1103,8 @@ async function submitLoad(type, btn) {
     // clear draft & staged state
     state.selectedCustomer = null;
     state.selectedAssets = [];
+    state.selectedExpenses = [];
+    state.selectedOurExpenses = [];
     state.invoiceNumber = '';
     clearDraft();
     navigate('dashboard');
@@ -1297,7 +1324,7 @@ async function approvePending(id, btn) {
   setBtnLoading(btn, false);
 }
 async function declinePending(id, btn) {
-  if (!confirm('Decline? Tanks will remain empty and session will be cancelled.')) return;
+  if (!confirm('Decline this price change? The session will remain active at the current approved price.')) return;
   setBtnLoading(btn, true);
   await withLoader('Declining...', async () => {
     const res = await apiPost({ action: 'declinePending', idempotencyKey: uid('DEC', id), pendingId: id, user: state.user.username });
@@ -1353,17 +1380,28 @@ async function renderReports(el) {
     <div class="card" style="margin-top:16px">
       <div class="card-title">Overall (filtered period)</div>
       <div class="data-row"><span class="lbl">Total Revenue</span><span class="val">$${overall.revenue.toFixed(2)}</span></div>
+      <div class="data-row"><span class="lbl">Client Expense Costs</span><span class="val">$${(monthly.tank.clientCosts + monthly.boiler.clientCosts).toFixed(2)}</span></div>
+      <div class="data-row"><span class="lbl">Our Internal Costs</span><span class="val">$${(monthly.tank.ourExpenses + monthly.boiler.ourExpenses).toFixed(2)}</span></div>
+      <div class="data-row"><span class="lbl">Driver Expenses</span><span class="val">$${monthly.grabber.expenses.toFixed(2)}</span></div>
       <div class="data-row"><span class="lbl">Total Expenses</span><span class="val">$${overall.expenses.toFixed(2)}</span></div>
       <div class="data-row total"><span class="lbl">Net Profit</span><span class="val" style="color:${overall.profit>=0?'#16a34a':'#dc2626'}">$${overall.profit.toFixed(2)}</span></div>
     </div>
     ${account === 'grabber' ? renderGrabberReport(monthly) : `
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">${account === 'boiler' ? 'Boiler' : 'Tank'} Account Details</div>
+        <div class="data-row"><span class="lbl">Revenue</span><span class="val">$${monthly[account === 'boiler' ? 'boiler' : 'tank'].revenue.toFixed(2)}</span></div>
+        <div class="data-row"><span class="lbl">Client Expense Costs</span><span class="val">$${monthly[account === 'boiler' ? 'boiler' : 'tank'].clientCosts.toFixed(2)}</span></div>
+        <div class="data-row"><span class="lbl">Our Internal Expenses</span><span class="val">$${monthly[account === 'boiler' ? 'boiler' : 'tank'].ourExpenses.toFixed(2)}</span></div>
+        <div class="data-row"><span class="lbl">Total Costs</span><span class="val">$${monthly[account === 'boiler' ? 'boiler' : 'tank'].expenses.toFixed(2)}</span></div>
+        <div class="data-row total"><span class="lbl">Profit</span><span class="val">$${monthly[account === 'boiler' ? 'boiler' : 'tank'].profit.toFixed(2)}</span></div>
+      </div>
       <div class="section-title">Completed Invoices (${invoices.length})</div>
       ${invoices.length === 0 ? '<div class="empty">No completed invoices for this period</div>' : invoices.map(inv => `
         <div class="list-item" onclick="viewInvoice('${inv.id}')">
           <div class="avatar">${inv.customerName ? inv.customerName[0].toUpperCase() : '?'}</div>
           <div class="info">
             <div class="name">${inv.customerName}</div>
-            <div class="sub">Inv: ${inv.invoiceNumber || inv.id} · ${inv.assetIds} · ${inv.completedAt ? new Date(inv.completedAt).toLocaleDateString() : ''}</div>
+            <div class="sub">Inv: ${inv.invoiceNumber || inv.id} · ${inv.assetIds} · ${inv.completedAt ? new Date(inv.completedAt).toLocaleDateString() : ''} · Completed by ${inv.completedBy || '-'}</div>
           </div>
           <div class="amount">$${Number(inv.totalAmount).toFixed(2)}</div>
         </div>
@@ -1401,6 +1439,8 @@ async function viewInvoice(id) {
     <div class="data-row"><span class="lbl">Assets</span><span class="val">${invoice.assetIds}</span></div>
     <div class="data-row"><span class="lbl">Created</span><span class="val">${new Date(invoice.createdAt).toLocaleDateString()}</span></div>
     <div class="data-row"><span class="lbl">Completed</span><span class="val">${invoice.completedAt ? new Date(invoice.completedAt).toLocaleDateString() : '-'}</span></div>
+    <div class="data-row"><span class="lbl">Created by</span><span class="val">${session && session.createdBy ? session.createdBy : '-'}</span></div>
+    <div class="data-row"><span class="lbl">Completed by</span><span class="val">${session && session.completedBy ? session.completedBy : '-'}</span></div>
     <div class="section-title" style="margin:14px 0 6px">Items</div>
     ${items.map(i => `<div class="data-row"><span class="lbl">${i.expenseName} × ${i.quantity}</span><span class="val">$${Number(i.total).toFixed(2)}</span></div>`).join('')}
     <div class="data-row total"><span class="lbl">Total</span><span class="val">$${Number(invoice.totalAmount).toFixed(2)}</span></div>
@@ -1637,13 +1677,15 @@ async function renderSettings(el) {
     return;
   }
   document.getElementById('headerSub').textContent = 'Administrator settings';
-  const [usersRes, expRes, dashRes] = await Promise.all([
+  const [usersRes, expRes, ourExpRes, dashRes] = await Promise.all([
     apiGet({ action: 'listUsers' }),
     apiGet({ action: 'expenseTypes' }),
+    apiGet({ action: 'ourExpenseTypes' }),
     apiGet({ action: 'dashboard' })
   ]);
   const users = usersRes.users || [];
   const expenses = expRes.expenses || [];
+  const ourExpenses = ourExpRes.expenses || [];
   const tanks = (dashRes.tanks && dashRes.tanks.items) || [];
   const boilers = (dashRes.boilers && dashRes.boilers.items) || [];
 
@@ -1694,7 +1736,8 @@ async function renderSettings(el) {
     <div class="card">
       <div class="card-title">Add New Expense</div>
       <div class="field"><label>Expense Name</label><input id="neName" type="text"></div>
-      <div class="field"><label>Amount</label><input id="neAmount" type="number" step="0.01" min="0"></div>
+      <div class="field"><label>Client Price</label><input id="neAmount" type="number" step="0.01" min="0"></div>
+      <div class="field"><label>Cost Price</label><input id="neCostAmount" type="number" step="0.01" min="0"></div>
       <div class="field"><label>Assign To</label>
         <select id="neAssetType">
           <option value="tank">Tank Account</option>
@@ -1711,11 +1754,24 @@ async function renderSettings(el) {
         <div class="list-item">
           <div class="info">
             <div class="name">${e.name}</div>
-            <div class="sub">$${Number(e.amount).toFixed(2)} · ${(e.assetType || 'tank').toUpperCase()}</div>
+            <div class="sub">Client $${Number(e.amount).toFixed(2)} · Cost $${Number(e.costAmount !== '' ? e.costAmount : e.amount).toFixed(2)} · ${(e.assetType || 'tank').toUpperCase()}</div>
           </div>
           <span class="badge small blue">${(e.assetType || 'tank').toUpperCase()}</span>
         </div>
       `).join('') || '<div class="empty">No expenses defined yet</div>'}
+    </div>
+
+    <div class="section-title">Our Internal Expenses</div>
+    <div class="card">
+      <div class="card-title">Add Unit Expense</div>
+      <div class="field"><label>Expense Name</label><input id="oeName" type="text" placeholder="e.g. Electricity"></div>
+      <div class="field"><label>Cost per Unit / Asset</label><input id="oeAmount" type="number" step="0.01" min="0"></div>
+      <div class="field"><label>Applies To</label><select id="oeAssetType"><option value="tank">Tank Account</option><option value="boiler">Boiler Account</option></select></div>
+      <button class="btn" onclick="addOurExpense(this)">Add Internal Expense</button>
+    </div>
+    <div class="card">
+      <div class="card-title">Existing Internal Expenses (${ourExpenses.length})</div>
+      ${ourExpenses.map(e => `<div class="list-item"><div class="info"><div class="name">${e.name}</div><div class="sub">$${Number(e.amountPerUnit).toFixed(2)} per ${(e.assetType||'tank').toUpperCase()}</div></div><span class="badge small blue">INTERNAL</span></div>`).join('') || '<div class="empty">No internal expenses defined yet</div>'}
     </div>
 
     <div class="section-title">Fleet Overview</div>
@@ -1739,17 +1795,29 @@ async function changeUserRole(username, newRole) {
 async function addNewExpense(btn) {
   const name = document.getElementById('neName').value.trim();
   const amount = Number(document.getElementById('neAmount').value);
+  const costAmount = Number(document.getElementById('neCostAmount').value);
   const assetType = document.getElementById('neAssetType').value;
   if (!name) return toast('Name required', 'error');
-  if (!amount || amount <= 0) return toast('Amount required', 'error');
+  if (!Number.isFinite(amount) || amount < 0) return toast('Client price required', 'error');
+  if (!Number.isFinite(costAmount) || costAmount < 0) return toast('Cost price required', 'error');
+  if (costAmount > amount) return toast('Cost price cannot be greater than client price', 'error');
   setBtnLoading(btn, true);
   await withLoader('Adding expense...', async () => {
-    const res = await apiPost({ action: 'createExpenseType', idempotencyKey: uid('EXP', name + ':' + amount + ':' + assetType), name, amount, assetType, user: state.user.username });
+    const res = await apiPost({ action: 'createExpenseType', idempotencyKey: uid('EXP', name + ':' + amount + ':' + assetType), name, amount, costAmount, assetType, user: state.user.username });
     if (!res.success) { toast(res.error, 'error'); return; }
     toast('Expense added', 'success');
     loadPage();
   });
   setBtnLoading(btn, false);
+}
+
+async function addOurExpense(btn) {
+  const name=document.getElementById('oeName').value.trim(); const amountPerUnit=Number(document.getElementById('oeAmount').value); const assetType=document.getElementById('oeAssetType').value;
+  if(!name) return toast('Name required','error'); if(!Number.isFinite(amountPerUnit)||amountPerUnit<0) return toast('Valid unit cost required','error');
+  setBtnLoading(btn,true); await withLoader('Adding internal expense...',async()=>{
+    const res=await apiPost({action:'createOurExpenseType',idempotencyKey:uid('OEXP',name+':'+amountPerUnit+':'+assetType),name,amountPerUnit,assetType,user:state.user.username});
+    if(!res.success){toast(res.error,'error');return;} toast('Internal expense added','success'); loadPage();
+  }); setBtnLoading(btn,false);
 }
 
 async function createUser(btn) {
